@@ -46,6 +46,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added `dealerdirect/phpcodesniffer-composer-installer` to allowed plugins
   - Fixes GitHub Actions failures for PHPCS, PHP Compatibility, and Security checks
   - Required for Composer 2.2+ compatibility
+- **PHPCS Configuration Issues** (Oct 6, 2025):
+  - Simplified `phpcs.xml` to use only WordPress-Core standard (most stable)
+  - Created separate `phpcs-compat.xml` for PHP Compatibility checks
+  - Removed references to non-existent WordPress sniffs
+  - Added verification steps in GitHub Actions workflows
+  - Added `continue-on-error` for informational checks
+  - Excluded `.github/` and `.md` files from PHPCS scans
 
 ---
 
