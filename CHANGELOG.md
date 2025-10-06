@@ -16,13 +16,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Settings Link**: Added "Settings" link to plugin actions on the Plugins page
 - **Column Reordering**: Moved "Upload Date" column to the end of the results table for better readability
   - New order: System Name → Processor → Platform → Single-Core → Multi-Core → Upload Date
+- **Data Sanitization Post-Processor** (Oct 5, 2025):
+  - Added `sanitize_results()` method to clean parsed data before caching
+  - Added `sanitize_upload_date()` method to extract clean date format using regex
+  - Removes usernames and extraneous text from upload date fields
+  - Integrated into fetch pipeline: parse → sanitize → cache → return
+  - Regex pattern: `/([A-Z][a-z]{2}\s+\d{1,2},\s+\d{4})/` extracts "MMM DD, YYYY" format
+- **Critical Code Safeguards** (Oct 6, 2025):
+  - Added ⚠️ warning comments to all critical parsing methods
+  - Documented HTML structure dependencies with "as of Oct 5, 2025" timestamps
+  - Added selector documentation to all extraction methods
+  - Included references to GUZZLE-GB-WP.md documentation
+  - Prevents accidental refactoring of tightly-coupled Geekbench HTML parsing logic
+- **Comprehensive Data Structure Documentation** (Oct 6, 2025):
+  - Added "Geekbench Results Data Structure" section to GUZZLE-GB-WP.md
+  - Documented all 7 data fields with selectors, methods, and return types
+  - Included data processing pipeline diagram
+  - Listed known edge cases and maintenance notes
+  - Added debugging tips for troubleshooting parsing issues
+  - Timestamped as "Last Updated: October 5, 2025"
 
 ### Changed
 - Updated plugin version from 1.0.0 to 1.1.0
 - Improved table layout with better column organization
 - Enhanced admin interface with settings submenu
+- Updated GUZZLE-GB-WP.md with completed task checkmarks:
+  - ✅ Phase 2 (Scraper Implementation) - All tasks complete
+  - ✅ Phase 3 (WordPress Admin Interface) - All tasks complete
+  - Added new subtasks for data sanitization and name translation features
 
 ### Fixed
+- **Upload Date Display** (Oct 5, 2025): Date field now displays clean dates without usernames
+  - Previously: "Oct 06, 2025\nusername" or "Oct 06, 2025 username"
+  - Now: "Oct 06, 2025"
+  - Fixed via post-processor sanitization instead of extraction-time handling
 - Table column order now matches user expectations with date at the end
 
 ### Removed
