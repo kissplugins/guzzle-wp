@@ -19,8 +19,51 @@ if (!defined('ABSPATH')) {
 
 <div class="wrap geekbench-scraper-settings">
     <h1><?php echo esc_html(get_admin_page_title()); ?></h1>
-    
+
+    <!-- Self-Test Section -->
+    <div class="geekbench-self-test-section">
+        <h2><?php esc_html_e('System Self-Test', 'geekbench-scraper'); ?></h2>
+        <p class="description">
+            <?php esc_html_e('Run diagnostic tests to ensure all plugin components are functioning correctly.', 'geekbench-scraper'); ?>
+        </p>
+
+        <div id="self-test-status" class="self-test-status">
+            <p class="test-summary">
+                <span id="test-count-display">
+                    <span class="dashicons dashicons-update spin"></span>
+                    <?php esc_html_e('Click "Run Tests" to begin...', 'geekbench-scraper'); ?>
+                </span>
+            </p>
+        </div>
+
+        <p>
+            <button type="button" class="button button-primary" id="run-self-tests">
+                <span class="dashicons dashicons-yes-alt" style="vertical-align: middle;"></span>
+                <?php esc_html_e('Run Tests', 'geekbench-scraper'); ?>
+            </button>
+            <span class="spinner" id="test-spinner" style="float: none; margin: 0 10px;"></span>
+        </p>
+
+        <div id="test-results" class="test-results" style="display: none;">
+            <table class="wp-list-table widefat fixed striped">
+                <thead>
+                    <tr>
+                        <th style="width: 5%;"><?php esc_html_e('Status', 'geekbench-scraper'); ?></th>
+                        <th style="width: 30%;"><?php esc_html_e('Test Name', 'geekbench-scraper'); ?></th>
+                        <th style="width: 65%;"><?php esc_html_e('Result', 'geekbench-scraper'); ?></th>
+                    </tr>
+                </thead>
+                <tbody id="test-results-tbody">
+                    <!-- Test results will be inserted here -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <hr style="margin: 40px 0;">
+
     <div class="geekbench-settings-header">
+        <h2><?php esc_html_e('System Name Translations', 'geekbench-scraper'); ?></h2>
         <p class="description">
             <?php esc_html_e('Configure system name translations to display user-friendly product names instead of internal model identifiers.', 'geekbench-scraper'); ?>
         </p>
@@ -124,10 +167,446 @@ if (!defined('ABSPATH')) {
     margin-right: 5px;
     margin-bottom: 5px;
 }
+
+/* Self-Test Styles */
+.geekbench-self-test-section {
+    background: #fff;
+    border: 1px solid #ccd0d4;
+    border-radius: 4px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.self-test-status {
+    background: #f0f0f1;
+    border-left: 4px solid #72aee6;
+    padding: 15px;
+    margin: 15px 0;
+}
+
+.self-test-status.all-passed {
+    background: #d4edda;
+    border-left-color: #28a745;
+}
+
+.self-test-status.some-failed {
+    background: #f8d7da;
+    border-left-color: #dc3545;
+}
+
+.test-summary {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0;
+}
+
+.test-summary.passed {
+    color: #28a745;
+}
+
+.test-summary.failed {
+    color: #dc3545;
+}
+
+.test-results {
+    margin-top: 20px;
+}
+
+.test-results table {
+    background: #fff;
+}
+
+.test-status-icon {
+    font-size: 20px;
+    line-height: 1;
+}
+
+.test-status-icon.passed {
+    color: #28a745;
+}
+
+.test-status-icon.failed {
+    color: #dc3545;
+}
+
+.test-status-icon.running {
+    color: #72aee6;
+}
+
+.test-result-message {
+    font-size: 13px;
+}
+
+.test-result-message code {
+    background: #f0f0f1;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 12px;
+}
+
+.test-result-details {
+    color: #666;
+    font-size: 12px;
+    margin-top: 5px;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.spin {
+    animation: spin 1s linear infinite;
+}
+
+#test-spinner.is-active {
+    visibility: visible;
+}
 </style>
 
 <script>
 jQuery(document).ready(function($) {
+
+    // ========================================
+    // SELF-TEST FUNCTIONALITY
+    // ========================================
+
+    $('#run-self-tests').on('click', function() {
+        runSelfTests();
+    });
+
+    function runSelfTests() {
+        const $button = $('#run-self-tests');
+        const $spinner = $('#test-spinner');
+        const $status = $('#self-test-status');
+        const $results = $('#test-results');
+        const $tbody = $('#test-results-tbody');
+        const $countDisplay = $('#test-count-display');
+
+        // Disable button and show spinner
+        $button.prop('disabled', true);
+        $spinner.addClass('is-active');
+        $results.show();
+        $tbody.empty();
+
+        // Update status
+        $status.removeClass('all-passed some-failed');
+        $countDisplay.html('<span class="dashicons dashicons-update spin"></span> Running tests...');
+
+        // Define all tests
+        const tests = [
+            {
+                name: 'PHP Version Check',
+                description: 'Verify PHP version is 7.4 or higher',
+                test: testPHPVersion
+            },
+            {
+                name: 'Guzzle HTTP Client',
+                description: 'Check if Guzzle HTTP client is loaded',
+                test: testGuzzleLoaded
+            },
+            {
+                name: 'DomCrawler Library',
+                description: 'Check if Symfony DomCrawler is loaded',
+                test: testDomCrawlerLoaded
+            },
+            {
+                name: 'WordPress Functions',
+                description: 'Verify WordPress core functions are available',
+                test: testWordPressFunctions
+            },
+            {
+                name: 'Cache System',
+                description: 'Test WordPress transient cache functionality',
+                test: testCacheSystem
+            },
+            {
+                name: 'Geekbench Connectivity',
+                description: 'Test connection to Geekbench Browser',
+                test: testGeekbenchConnectivity
+            },
+            {
+                name: 'Scraper Logic Test',
+                description: 'Test core scraping functionality with real data',
+                test: testScraperLogic
+            },
+            {
+                name: 'HTML Parser Test',
+                description: 'Test DOM selectors extract data correctly',
+                test: testHTMLParser
+            }
+        ];
+
+        let passedCount = 0;
+        let failedCount = 0;
+        let completedCount = 0;
+
+        // Run tests sequentially
+        runNextTest(0);
+
+        function runNextTest(index) {
+            if (index >= tests.length) {
+                // All tests complete
+                finishTests();
+                return;
+            }
+
+            const test = tests[index];
+
+            // Add test row
+            const $row = $('<tr></tr>');
+            $row.html(`
+                <td class="test-status-icon running">
+                    <span class="dashicons dashicons-update spin"></span>
+                </td>
+                <td>
+                    <strong>${test.name}</strong><br>
+                    <small class="test-result-details">${test.description}</small>
+                </td>
+                <td class="test-result-message">
+                    <em>Running...</em>
+                </td>
+            `);
+            $tbody.append($row);
+
+            // Run the test
+            test.test(function(passed, message, details) {
+                completedCount++;
+
+                if (passed) {
+                    passedCount++;
+                    $row.find('.test-status-icon').removeClass('running').addClass('passed')
+                        .html('<span class="dashicons dashicons-yes-alt"></span>');
+                    $row.find('.test-result-message').html(
+                        `<span style="color: #28a745;">✓ ${message}</span>` +
+                        (details ? `<div class="test-result-details">${details}</div>` : '')
+                    );
+                } else {
+                    failedCount++;
+                    $row.find('.test-status-icon').removeClass('running').addClass('failed')
+                        .html('<span class="dashicons dashicons-dismiss"></span>');
+                    $row.find('.test-result-message').html(
+                        `<span style="color: #dc3545;">✗ ${message}</span>` +
+                        (details ? `<div class="test-result-details">${details}</div>` : '')
+                    );
+                }
+
+                // Update count display
+                updateCountDisplay();
+
+                // Run next test
+                setTimeout(function() {
+                    runNextTest(index + 1);
+                }, 300);
+            });
+        }
+
+        function updateCountDisplay() {
+            const total = tests.length;
+            const statusClass = failedCount > 0 ? 'failed' : (passedCount === total ? 'passed' : '');
+
+            $countDisplay.html(
+                `<strong class="${statusClass}">${passedCount} of ${total} tests passed</strong>`
+            );
+
+            if (failedCount > 0) {
+                $status.removeClass('all-passed').addClass('some-failed');
+            } else if (passedCount === total) {
+                $status.removeClass('some-failed').addClass('all-passed');
+            }
+        }
+
+        function finishTests() {
+            $button.prop('disabled', false);
+            $spinner.removeClass('is-active');
+            updateCountDisplay();
+        }
+    }
+
+    // ========================================
+    // TEST FUNCTIONS
+    // ========================================
+
+    function testPHPVersion(callback) {
+        $.ajax({
+            url: ajaxurl,
+            method: 'POST',
+            data: {
+                action: 'geekbench_self_test',
+                test: 'php_version',
+                nonce: '<?php echo wp_create_nonce('geekbench_self_test'); ?>'
+            },
+            success: function(response) {
+                if (response.success) {
+                    callback(true, response.data.message, response.data.details);
+                } else {
+                    callback(false, response.data.message, response.data.details);
+                }
+            },
+            error: function() {
+                callback(false, 'AJAX request failed', 'Could not communicate with server');
+            }
+        });
+    }
+
+    function testGuzzleLoaded(callback) {
+        $.ajax({
+            url: ajaxurl,
+            method: 'POST',
+            data: {
+                action: 'geekbench_self_test',
+                test: 'guzzle_loaded',
+                nonce: '<?php echo wp_create_nonce('geekbench_self_test'); ?>'
+            },
+            success: function(response) {
+                if (response.success) {
+                    callback(true, response.data.message, response.data.details);
+                } else {
+                    callback(false, response.data.message, response.data.details);
+                }
+            },
+            error: function() {
+                callback(false, 'AJAX request failed', 'Could not communicate with server');
+            }
+        });
+    }
+
+    function testDomCrawlerLoaded(callback) {
+        $.ajax({
+            url: ajaxurl,
+            method: 'POST',
+            data: {
+                action: 'geekbench_self_test',
+                test: 'domcrawler_loaded',
+                nonce: '<?php echo wp_create_nonce('geekbench_self_test'); ?>'
+            },
+            success: function(response) {
+                if (response.success) {
+                    callback(true, response.data.message, response.data.details);
+                } else {
+                    callback(false, response.data.message, response.data.details);
+                }
+            },
+            error: function() {
+                callback(false, 'AJAX request failed', 'Could not communicate with server');
+            }
+        });
+    }
+
+    function testWordPressFunctions(callback) {
+        $.ajax({
+            url: ajaxurl,
+            method: 'POST',
+            data: {
+                action: 'geekbench_self_test',
+                test: 'wordpress_functions',
+                nonce: '<?php echo wp_create_nonce('geekbench_self_test'); ?>'
+            },
+            success: function(response) {
+                if (response.success) {
+                    callback(true, response.data.message, response.data.details);
+                } else {
+                    callback(false, response.data.message, response.data.details);
+                }
+            },
+            error: function() {
+                callback(false, 'AJAX request failed', 'Could not communicate with server');
+            }
+        });
+    }
+
+    function testCacheSystem(callback) {
+        $.ajax({
+            url: ajaxurl,
+            method: 'POST',
+            data: {
+                action: 'geekbench_self_test',
+                test: 'cache_system',
+                nonce: '<?php echo wp_create_nonce('geekbench_self_test'); ?>'
+            },
+            success: function(response) {
+                if (response.success) {
+                    callback(true, response.data.message, response.data.details);
+                } else {
+                    callback(false, response.data.message, response.data.details);
+                }
+            },
+            error: function() {
+                callback(false, 'AJAX request failed', 'Could not communicate with server');
+            }
+        });
+    }
+
+    function testGeekbenchConnectivity(callback) {
+        $.ajax({
+            url: ajaxurl,
+            method: 'POST',
+            data: {
+                action: 'geekbench_self_test',
+                test: 'geekbench_connectivity',
+                nonce: '<?php echo wp_create_nonce('geekbench_self_test'); ?>'
+            },
+            success: function(response) {
+                if (response.success) {
+                    callback(true, response.data.message, response.data.details);
+                } else {
+                    callback(false, response.data.message, response.data.details);
+                }
+            },
+            error: function() {
+                callback(false, 'AJAX request failed', 'Could not communicate with server');
+            }
+        });
+    }
+
+    function testScraperLogic(callback) {
+        $.ajax({
+            url: ajaxurl,
+            method: 'POST',
+            data: {
+                action: 'geekbench_self_test',
+                test: 'scraper_logic',
+                nonce: '<?php echo wp_create_nonce('geekbench_self_test'); ?>'
+            },
+            success: function(response) {
+                if (response.success) {
+                    callback(true, response.data.message, response.data.details);
+                } else {
+                    callback(false, response.data.message, response.data.details);
+                }
+            },
+            error: function() {
+                callback(false, 'AJAX request failed', 'Could not communicate with server');
+            }
+        });
+    }
+
+    function testHTMLParser(callback) {
+        $.ajax({
+            url: ajaxurl,
+            method: 'POST',
+            data: {
+                action: 'geekbench_self_test',
+                test: 'html_parser',
+                nonce: '<?php echo wp_create_nonce('geekbench_self_test'); ?>'
+            },
+            success: function(response) {
+                if (response.success) {
+                    callback(true, response.data.message, response.data.details);
+                } else {
+                    callback(false, response.data.message, response.data.details);
+                }
+            },
+            error: function() {
+                callback(false, 'AJAX request failed', 'Could not communicate with server');
+            }
+        });
+    }
+
+    // ========================================
+    // TRANSLATION MANAGEMENT
+    // ========================================
+
     // Add new translation row
     $('#add-translation').on('click', function() {
         const newRow = `
