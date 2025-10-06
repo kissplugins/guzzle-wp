@@ -158,7 +158,8 @@ composer test:coverage
 
 ## License
 
-GPL-2.0-or-later
+MIT - See LICENSE file for details
+Carried over from original Guzzle library
 
 ## Credits
 
@@ -168,5 +169,5 @@ GPL-2.0-or-later
 
 ## Support
 
-For issues, questions, or contributions, please visit the [GitHub repository](https://github.com/yourusername/geekbench-scraper).
+For issues, questions, or contributions, please visit the [GitHub repository](https://github.com/kissplugins/guzzle-wp).
 

@@ -170,21 +170,22 @@ class Scraper {
             // Find all result containers
             $crawler->filter('div.col-12.list-col')->each(function (Crawler $node) use (&$results) {
                 try {
+                    // Extract data using the correct structure
                     $result = [
-                        'system_name' => $this->extract_text($node, '.col-12.col-lg-4 a'),
+                        'system_name' => $this->extract_system_name($node),
                         'benchmark_url' => $this->extract_attr($node, '.col-12.col-lg-4 a', 'href'),
-                        'processor_info' => $this->extract_text($node, '.list-col-model'),
-                        'upload_date' => $this->extract_text($node, '.col-6.col-md-3.col-lg-2', 1),
-                        'platform' => $this->extract_text($node, '.col-6.col-md-3.col-lg-2', 2),
+                        'processor_info' => $this->extract_processor_info($node),
+                        'upload_date' => $this->extract_upload_date($node),
+                        'platform' => $this->extract_platform($node),
                         'single_core_score' => $this->extract_score($node, 0),
                         'multi_core_score' => $this->extract_score($node, 1),
                     ];
-                    
+
                     // Add full benchmark URL
                     if (!empty($result['benchmark_url'])) {
                         $result['benchmark_url'] = $this->base_url . $result['benchmark_url'];
                     }
-                    
+
                     // Only add if we have minimum required data
                     if (!empty($result['system_name']) && !empty($result['single_core_score'])) {
                         $results[] = $result;
@@ -264,6 +265,106 @@ class Scraper {
             // Return 0 on error
         }
         return 0;
+    }
+
+    /**
+     * Extract system name from node
+     *
+     * @since 1.0.0
+     *
+     * @param Crawler $node Parent node
+     * @return string System name
+     */
+    private function extract_system_name(Crawler $node) {
+        try {
+            $link = $node->filter('.col-12.col-lg-4 a');
+            if ($link->count() > 0) {
+                return trim($link->text());
+            }
+        } catch (\Exception $e) {
+            // Return empty string on error
+        }
+        return '';
+    }
+
+    /**
+     * Extract processor info from node
+     *
+     * @since 1.0.0
+     *
+     * @param Crawler $node Parent node
+     * @return string Processor info
+     */
+    private function extract_processor_info(Crawler $node) {
+        try {
+            $model = $node->filter('.list-col-model');
+            if ($model->count() > 0) {
+                return trim($model->text());
+            }
+        } catch (\Exception $e) {
+            // Return empty string on error
+        }
+        return '';
+    }
+
+    /**
+     * Extract upload date from node
+     *
+     * @since 1.0.0
+     *
+     * @param Crawler $node Parent node
+     * @return string Upload date
+     */
+    private function extract_upload_date(Crawler $node) {
+        try {
+            // Find the column with "Uploaded" subtitle
+            $columns = $node->filter('.col-6.col-md-3.col-lg-2');
+            foreach ($columns as $column) {
+                $col_crawler = new Crawler($column);
+                $subtitle = $col_crawler->filter('.list-col-subtitle');
+                if ($subtitle->count() > 0 && trim($subtitle->text()) === 'Uploaded') {
+                    $text = $col_crawler->filter('.list-col-text');
+                    if ($text->count() > 0) {
+                        // Get text and remove any username links
+                        $date_text = trim($text->text());
+                        // Remove everything after newline (username)
+                        $date_text = explode("\n", $date_text)[0];
+                        return trim($date_text);
+                    }
+                }
+            }
+        } catch (\Exception $e) {
+            // Return empty string on error
+        }
+        return '';
+    }
+
+    /**
+     * Extract platform from node
+     *
+     * @since 1.0.0
+     *
+     * @param Crawler $node Parent node
+     * @return string Platform
+     */
+    private function extract_platform(Crawler $node) {
+        try {
+            // Find the column with "Platform" subtitle
+            $columns = $node->filter('.col-6.col-md-3.col-lg-2');
+            foreach ($columns as $column) {
+                $col_crawler = new Crawler($column);
+                $subtitle = $col_crawler->filter('.list-col-subtitle');
+                if ($subtitle->count() > 0 && trim($subtitle->text()) === 'Platform') {
+                    $text = $col_crawler->filter('.list-col-text');
+                    if ($text->count() > 0) {
+                        return trim($text->text());
+                    }
+                }
+            }
+        } catch (\Exception $e) {
+            // Return empty string on error
+        }
+        return '';
     }
     
     /**
