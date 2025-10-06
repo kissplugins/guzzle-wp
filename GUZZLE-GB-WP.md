@@ -220,7 +220,7 @@ Example URL: https://browser.geekbench.com/search?q=Iphone18
 ---
 
 ## Additional Considerations
-
+- [ ] All below
 - **Security**: Sanitize all inputs, validate URLs, use WordPress nonces for AJAX requests
 - **Error Handling**: Log errors with WP_DEBUG, display user-friendly messages in admin
 - **Rate Limiting**: Add delays between requests to respect Geekbench's servers

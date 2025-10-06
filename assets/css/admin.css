@@ -1,0 +1,105 @@
+/**
+ * Admin Styles
+ *
+ * Styles for the Geekbench Scraper admin interface.
+ *
+ * @package GeekbenchScraper
+ * @since 1.0.0
+ */
+
+/* Admin Page Layout */
+.geekbench-scraper-admin {
+    max-width: 1400px;
+}
+
+.geekbench-scraper-admin .wrap > h1 {
+    margin-bottom: 15px;
+}
+
+/* Header Section */
+.geekbench-scraper-header {
+    margin-bottom: 25px;
+}
+
+.geekbench-scraper-header .description {
+    font-size: 14px;
+    color: #646970;
+}
+
+/* Search Form */
+.geekbench-scraper-search-form {
+    background: #fff;
+    border: 1px solid #c3c4c7;
+    border-radius: 4px;
+    padding: 20px;
+    margin: 20px 0;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+}
+
+.geekbench-scraper-search-form .form-table {
+    margin-top: 0;
+}
+
+.geekbench-scraper-search-form .form-table th {
+    padding-left: 0;
+}
+
+.geekbench-scraper-search-form .submit {
+    margin-top: 0;
+    padding-top: 10px;
+}
+
+/* Buttons */
+#search-button,
+#refresh-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+#search-button .dashicons,
+#refresh-button .dashicons {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+}
+
+#loading-spinner {
+    float: none;
+    margin-left: 10px;
+    vertical-align: middle;
+    display: none;
+}
+
+#loading-spinner.is-active {
+    display: inline-block;
+    visibility: visible;
+}
+
+/* Results Section */
+.geekbench-scraper-results {
+    margin-top: 30px;
+}
+
+.geekbench-scraper-results h2 {
+    margin-bottom: 15px;
+    font-size: 20px;
+}
+
+/* Notices */
+.geekbench-scraper-admin .notice {
+    margin: 15px 0;
+}
+
+/* Responsive */
+@media (max-width: 782px) {
+    .geekbench-scraper-search-form {
+        padding: 15px;
+    }
+    
+    #search-button,
+    #refresh-button {
+        margin-bottom: 10px;
+    }
+}
+
