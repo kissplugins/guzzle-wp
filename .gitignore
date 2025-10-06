@@ -1,12 +1,54 @@
-.php-cs-fixer.php
-.php-cs-fixer.cache
-.phpunit.result.cache
+# Composer
 composer.lock
 vendor/
-/phpstan.neon
+composer.phar
+
+# PHP CS Fixer
+.php-cs-fixer.php
+.php-cs-fixer.cache
+
+# PHPUnit
+.phpunit.result.cache
 /phpunit.xml
 
+# PHPStan
+/phpstan.neon
+
+# PHPCS
+.phpcs-cache
+
+# Build artifacts
 build/
 artifacts/
 docs/_build
 docs/*.pyc
+
+# Coverage reports
+coverage/
+*.coverage
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Node modules (if using any frontend tools)
+node_modules/
+package-lock.json
+
+# WordPress
+wp-config.php
+.htaccess
+
+# Logs
+*.log
+error_log
+debug.log
+
+# Temporary files
+*.tmp
+*.temp
+.cache/

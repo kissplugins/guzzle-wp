@@ -5,6 +5,44 @@ All notable changes to the Geekbench Browser Scraper WordPress plugin will be do
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **GitHub Actions CI/CD Pipeline** (Oct 6, 2025):
+  - PHP Lint workflow for syntax checking across PHP 7.4-8.3
+  - WordPress Coding Standards workflow with PHPCS
+  - Comprehensive CI workflow combining all checks
+  - PHP Compatibility checks for PHP 7.4+
+  - Security vulnerability scanning with `composer audit`
+  - Automated code annotations on pull requests
+- **PHPCS Configuration** (`phpcs.xml`):
+  - WordPress, WordPress-Extra, and WordPress-Docs standards
+  - PHPCompatibilityWP for cross-version compatibility
+  - Custom exclusions for vendor/, tests/, etc.
+  - Text domain validation (`geekbench-scraper`)
+  - Prefix validation (`geekbench_scraper`, `GeekbenchScraper`)
+- **Composer Scripts**:
+  - `composer run-script lint` - Run PHPCS checks
+  - `composer run-script lint:fix` - Auto-fix coding standards
+  - `composer run-script phpcs` - Direct PHPCS access
+  - `composer run-script phpcbf` - Direct PHPCBF access
+- **Documentation**:
+  - `.github/README.md` - GitHub Actions workflow documentation
+  - `CI-CD-SETUP.md` - Complete CI/CD setup guide
+  - Troubleshooting guides and best practices
+- **Dependencies** (dev):
+  - `squizlabs/php_codesniffer` ^3.7
+  - `wp-coding-standards/wpcs` ^3.0
+  - `phpcompatibility/phpcompatibility-wp` ^2.1
+
+### Changed
+- Updated `.gitignore` with comprehensive exclusions
+  - Added PHPCS cache, coverage reports, IDE files
+  - Better organization with comments
+  - Added temporary files and logs
+
+---
+
 ## [1.1.0] - 2025-10-06
 
 ### Added
