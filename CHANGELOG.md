@@ -8,6 +8,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.2.0] - 2025-10-06
 
 ### Added
+- **Auto Composer Install** (Oct 6, 2025):
+  - Automatic Composer dependency installation on plugin activation
+  - Detects and uses local `composer.phar` or system `composer` command
+  - Automatic PHP binary detection (supports PHP_BINARY constant and common paths)
+  - Smart installation with two fallback methods
+  - Admin notices for success/failure with detailed error messages
+  - Manual installation instructions if auto-install fails
+  - Security measures: command escaping, file validation, safe directory changes
+  - Comprehensive documentation in `docs/AUTO-COMPOSER-INSTALL.md`
+  - Eliminates manual `composer install` step for end users
+
 - **Modern Frontend Shortcode** (Oct 6, 2025):
   - Complete redesign of `[geekbench_results]` shortcode with modern UI
   - Large search input field with SVG magnifying glass icon submit button
