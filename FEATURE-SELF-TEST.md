@@ -82,7 +82,7 @@ The Settings page now includes a comprehensive **System Self-Test Suite** with 6
 - **What it tests**:
   1. Scraper can fetch data from Geekbench
   2. Returns array of results (not empty)
-  3. Results contain all required fields: `system_name`, `single_core`, `multi_core`, `upload_date`, `url`
+  3. Results contain all required fields: `system_name`, `single_core_score`, `multi_core_score`, `upload_date`, `benchmark_url`
   4. Data quality validation (non-empty names, valid scores)
 - **Test Query**: "iPhone" (known to return results)
 - **Details**: Shows number of results retrieved

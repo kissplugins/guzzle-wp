@@ -553,7 +553,7 @@ class Admin {
 
             // Validate first result has required fields
             $first_result = $results[0];
-            $required_fields = ['system_name', 'single_core', 'multi_core', 'upload_date', 'url'];
+            $required_fields = ['system_name', 'single_core_score', 'multi_core_score', 'upload_date', 'benchmark_url'];
             $missing_fields = [];
 
             foreach ($required_fields as $field) {
@@ -577,12 +577,12 @@ class Admin {
                 $issues[] = 'system_name is empty';
             }
 
-            if (!is_numeric($first_result['single_core']) || $first_result['single_core'] <= 0) {
-                $issues[] = 'single_core score invalid';
+            if (!is_numeric($first_result['single_core_score']) || $first_result['single_core_score'] <= 0) {
+                $issues[] = 'single_core_score invalid';
             }
 
-            if (!is_numeric($first_result['multi_core']) || $first_result['multi_core'] <= 0) {
-                $issues[] = 'multi_core score invalid';
+            if (!is_numeric($first_result['multi_core_score']) || $first_result['multi_core_score'] <= 0) {
+                $issues[] = 'multi_core_score invalid';
             }
 
             if (!empty($issues)) {
