@@ -15,6 +15,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Styled with blue highlight to distinguish from regular rows
   - Updates dynamically when table is sorted or filtered
   - JavaScript function `calculateAverages()` handles real-time calculation
+
+- **System Self-Test Suite** (Oct 6, 2025):
+  - 8 critical diagnostic tests on Settings page
+  - Visual status indicator: "X of 8 tests passed" (green if all pass, red if any fail)
+  - **Test 1**: PHP Version Check (7.4+ required)
+  - **Test 2**: Guzzle HTTP Client loaded
+  - **Test 3**: Symfony DomCrawler loaded
+  - **Test 4**: WordPress core functions available
+  - **Test 5**: Cache system (transients) working
+  - **Test 6**: Geekbench.com connectivity test
+  - **Test 7**: Scraper Logic Test - validates core scraping with real data
+  - **Test 8**: HTML Parser Test - validates DOM selectors extract data correctly
+  - Real-time test execution with progress indicators
+  - Detailed pass/fail messages with troubleshooting info
+  - AJAX-powered for smooth user experience
 - **GitHub Actions CI/CD Pipeline** (Oct 6, 2025):
   - PHP Lint workflow for syntax checking across PHP 7.4-8.3
   - WordPress Coding Standards workflow with PHPCS

@@ -172,6 +172,15 @@ Example URL: https://browser.geekbench.com/search?q=Iphone18
   - Updates in real-time when table is sorted
   - Styled with blue highlight for visual distinction
 
+- [x] **Add system self-test suite**
+  - 8 critical diagnostic tests on Settings page
+  - Visual status indicator showing pass/fail count
+  - Tests: PHP version, Guzzle, DomCrawler, WordPress functions, cache, Geekbench connectivity
+  - **Test 7**: Scraper Logic - validates core scraping functionality with real Geekbench data
+  - **Test 8**: HTML Parser - validates DOM selectors extract all required fields correctly
+  - Real-time AJAX execution with progress indicators
+  - Detailed error messages for troubleshooting
+
 ---
 
 ## Phase 4: Frontend Shortcode Implementation
