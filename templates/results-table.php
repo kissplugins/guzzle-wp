@@ -36,10 +36,6 @@ if (!isset($table_class)) {
                     <?php esc_html_e('Processor', 'geekbench-scraper'); ?>
                     <span class="sort-indicator"></span>
                 </th>
-                <th class="sortable" data-sort="date">
-                    <?php esc_html_e('Upload Date', 'geekbench-scraper'); ?>
-                    <span class="sort-indicator"></span>
-                </th>
                 <th class="sortable" data-sort="platform">
                     <?php esc_html_e('Platform', 'geekbench-scraper'); ?>
                     <span class="sort-indicator"></span>
@@ -50,6 +46,10 @@ if (!isset($table_class)) {
                 </th>
                 <th class="sortable" data-sort="multi-core">
                     <?php esc_html_e('Multi-Core', 'geekbench-scraper'); ?>
+                    <span class="sort-indicator"></span>
+                </th>
+                <th class="sortable" data-sort="date">
+                    <?php esc_html_e('Upload Date', 'geekbench-scraper'); ?>
                     <span class="sort-indicator"></span>
                 </th>
             </tr>
@@ -66,20 +66,31 @@ if (!isset($table_class)) {
                         data-multi-core="<?php echo esc_attr($result['multi_core_score']); ?>"
                     >
                         <td class="system-name">
+                            <?php
+                            // Get translated name if available
+                            $display_name = $result['system_name'];
+                            $translations = get_option('geekbench_scraper_name_translations', array());
+                            if (!empty($translations[$result['system_name']])) {
+                                $display_name = $translations[$result['system_name']];
+                            }
+                            ?>
                             <?php if (!empty($result['benchmark_url'])): ?>
                                 <a href="<?php echo esc_url($result['benchmark_url']); ?>" target="_blank" rel="noopener noreferrer">
-                                    <?php echo esc_html($result['system_name']); ?>
+                                    <?php echo esc_html($display_name); ?>
+                                    <?php if ($display_name !== $result['system_name']): ?>
+                                        <small class="original-name">(<?php echo esc_html($result['system_name']); ?>)</small>
+                                    <?php endif; ?>
                                     <span class="dashicons dashicons-external" style="font-size: 14px; vertical-align: middle;"></span>
                                 </a>
                             <?php else: ?>
-                                <?php echo esc_html($result['system_name']); ?>
+                                <?php echo esc_html($display_name); ?>
+                                <?php if ($display_name !== $result['system_name']): ?>
+                                    <small class="original-name">(<?php echo esc_html($result['system_name']); ?>)</small>
+                                <?php endif; ?>
                             <?php endif; ?>
                         </td>
                         <td class="processor">
                             <small><?php echo esc_html($result['processor_info']); ?></small>
-                        </td>
-                        <td class="date">
-                            <?php echo esc_html($result['upload_date']); ?>
                         </td>
                         <td class="platform">
                             <span class="platform-badge platform-<?php echo esc_attr(strtolower($result['platform'])); ?>">
@@ -91,6 +102,9 @@ if (!isset($table_class)) {
                         </td>
                         <td class="multi-core score">
                             <strong><?php echo esc_html(number_format($result['multi_core_score'])); ?></strong>
+                        </td>
+                        <td class="date">
+                            <?php echo esc_html($result['upload_date']); ?>
                         </td>
                     </tr>
                 <?php endforeach; ?>

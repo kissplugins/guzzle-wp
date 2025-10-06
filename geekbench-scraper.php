@@ -3,7 +3,7 @@
  * Plugin Name: Geekbench Browser Scraper
  * Plugin URI: https://github.com/yourusername/geekbench-scraper
  * Description: Scrapes and displays Geekbench browser results with sortable tables. Default search: iPhone18 (iPhone 17 models).
- * Version: 1.0.0
+ * Version: 1.1.0
  * Author: Your Name
  * Author URI: https://yourwebsite.com
  * License: GPL-2.0-or-later
@@ -25,7 +25,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('GEEKBENCH_SCRAPER_VERSION', '1.0.0');
+define('GEEKBENCH_SCRAPER_VERSION', '1.1.0');
 define('GEEKBENCH_SCRAPER_PLUGIN_FILE', __FILE__);
 define('GEEKBENCH_SCRAPER_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('GEEKBENCH_SCRAPER_PLUGIN_URL', plugin_dir_url(__FILE__));
@@ -105,6 +105,20 @@ function deactivate_plugin() {
     flush_rewrite_rules();
 }
 register_deactivation_hook(__FILE__, __NAMESPACE__ . '\\deactivate_plugin');
+
+/**
+ * Add settings link to plugins page
+ *
+ * @since 1.1.0
+ * @param array $links Plugin action links
+ * @return array Modified links
+ */
+function add_settings_link($links) {
+    $settings_link = '<a href="' . admin_url('tools.php?page=geekbench-scraper-settings') . '">' . __('Settings', 'geekbench-scraper') . '</a>';
+    array_unshift($links, $settings_link);
+    return $links;
+}
+add_filter('plugin_action_links_' . plugin_basename(__FILE__), __NAMESPACE__ . '\\add_settings_link');
 
 /**
  * Plugin uninstall hook
