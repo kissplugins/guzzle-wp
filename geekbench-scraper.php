@@ -3,7 +3,7 @@
  * Plugin Name: Geekbench Browser Scraper
  * Plugin URI: https://github.com/yourusername/geekbench-scraper
  * Description: Scrapes and displays Geekbench browser results with sortable tables. Default search: iPhone18 (iPhone 17 models).
- * Version: 1.1.1
+ * Version: 1.2.0
  * Author: Your Name
  * Author URI: https://yourwebsite.com
  * License: GPL-2.0-or-later
@@ -25,7 +25,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('GEEKBENCH_SCRAPER_VERSION', '1.1.0');
+define('GEEKBENCH_SCRAPER_VERSION', '1.2.0');
 define('GEEKBENCH_SCRAPER_PLUGIN_FILE', __FILE__);
 define('GEEKBENCH_SCRAPER_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('GEEKBENCH_SCRAPER_PLUGIN_URL', plugin_dir_url(__FILE__));
