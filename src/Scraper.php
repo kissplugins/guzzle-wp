@@ -160,6 +160,11 @@ class Scraper {
     /**
      * Parse HTML and extract benchmark results
      *
+     * ⚠️ CRITICAL PARSING LOGIC - DO NOT REFACTOR WITHOUT TESTING ⚠️
+     * This method is tightly coupled to Geekbench's HTML structure as of Oct 5, 2025.
+     * Any changes to selectors or extraction logic must be tested against live Geekbench data.
+     * See GUZZLE-GB-WP.md "Geekbench Results Data Structure" section for current structure.
+     *
      * @since 1.0.0
      *
      * @param string $html HTML content to parse
@@ -168,11 +173,13 @@ class Scraper {
     public function parse_html($html) {
         $crawler = new Crawler($html);
         $results = [];
-        
+
         try {
+            // ⚠️ CRITICAL: Parent selector for result containers (as of Oct 5, 2025)
             // Find all result containers
             $crawler->filter('div.col-12.list-col')->each(function (Crawler $node) use (&$results) {
                 try {
+                    // ⚠️ CRITICAL: Data extraction structure - do not modify without testing
                     // Extract data using the correct structure
                     $result = [
                         'system_name' => $this->extract_system_name($node),
@@ -201,16 +208,17 @@ class Scraper {
         } catch (\Exception $e) {
             error_log('Geekbench Scraper: Failed to parse HTML - ' . $e->getMessage());
         }
-        
+
         return $results;
     }
 
     /**
      * Sanitize results data
      *
+     * ⚠️ CRITICAL POST-PROCESSOR - DO NOT REMOVE ⚠️
      * Post-processes the parsed results to clean up and normalize data.
      * Specifically handles cleaning upload_date field to remove usernames
-     * and other extraneous text.
+     * and other extraneous text that appears in the raw HTML.
      *
      * @since 1.0.0
      *
@@ -219,7 +227,7 @@ class Scraper {
      */
     private function sanitize_results($results) {
         foreach ($results as &$result) {
-            // Sanitize upload_date to remove usernames and extra text
+            // ⚠️ CRITICAL: Sanitize upload_date to remove usernames and extra text
             if (!empty($result['upload_date'])) {
                 $result['upload_date'] = $this->sanitize_upload_date($result['upload_date']);
             }
@@ -230,8 +238,12 @@ class Scraper {
     /**
      * Sanitize upload date string
      *
+     * ⚠️ CRITICAL REGEX PATTERN - DO NOT MODIFY WITHOUT TESTING ⚠️
      * Removes usernames and other extraneous text from the upload date,
      * keeping only the date portion in format "MMM DD, YYYY".
+     *
+     * Raw format from Geekbench: "Oct 06, 2025\nusername" or "Oct 06, 2025 username"
+     * Cleaned format: "Oct 06, 2025"
      *
      * @since 1.0.0
      *
@@ -239,8 +251,9 @@ class Scraper {
      * @return string Cleaned date string
      */
     private function sanitize_upload_date($date_string) {
-        // Pattern to match date format: "Oct 06, 2025"
+        // ⚠️ CRITICAL: Pattern to match date format: "Oct 06, 2025"
         // This matches: Month (3 letters) + space + day (1-2 digits) + comma + space + year (4 digits)
+        // Regex: /([A-Z][a-z]{2}\s+\d{1,2},\s+\d{4})/
         if (preg_match('/([A-Z][a-z]{2}\s+\d{1,2},\s+\d{4})/', $date_string, $matches)) {
             return $matches[1];
         }
@@ -275,6 +288,10 @@ class Scraper {
     /**
      * Extract score from node
      *
+     * ⚠️ CRITICAL SELECTOR - DO NOT MODIFY ⚠️
+     * Selector: .list-col-text-score (as of Oct 5, 2025)
+     * Index 0 = single-core score, Index 1 = multi-core score
+     *
      * @since 1.0.0
      *
      * @param Crawler $node Parent node
@@ -283,6 +300,7 @@ class Scraper {
      */
     private function extract_score(Crawler $node, $index) {
         try {
+            // ⚠️ CRITICAL: Score selector (as of Oct 5, 2025)
             $scores = $node->filter('.list-col-text-score');
             if ($scores->count() > $index) {
                 return (int) trim($scores->eq($index)->text());
@@ -296,6 +314,10 @@ class Scraper {
     /**
      * Extract system name from node
      *
+     * ⚠️ CRITICAL SELECTOR - DO NOT MODIFY ⚠️
+     * Selector: .col-12.col-lg-4 a (as of Oct 5, 2025)
+     * Returns the device name (e.g., "iPhone18,2")
+     *
      * @since 1.0.0
      *
      * @param Crawler $node Parent node
@@ -303,6 +325,7 @@ class Scraper {
      */
     private function extract_system_name(Crawler $node) {
         try {
+            // ⚠️ CRITICAL: System name selector (as of Oct 5, 2025)
             $link = $node->filter('.col-12.col-lg-4 a');
             if ($link->count() > 0) {
                 return trim($link->text());
@@ -316,6 +339,10 @@ class Scraper {
     /**
      * Extract processor info from node
      *
+     * ⚠️ CRITICAL SELECTOR - DO NOT MODIFY ⚠️
+     * Selector: .list-col-model (as of Oct 5, 2025)
+     * Returns multi-line text with processor type, frequency, and core count
+     *
      * @since 1.0.0
      *
      * @param Crawler $node Parent node
@@ -323,6 +350,7 @@ class Scraper {
      */
     private function extract_processor_info(Crawler $node) {
         try {
+            // ⚠️ CRITICAL: Processor info selector (as of Oct 5, 2025)
             $model = $node->filter('.list-col-model');
             if ($model->count() > 0) {
                 return trim($model->text());
@@ -336,14 +364,21 @@ class Scraper {
     /**
      * Extract upload date from node
      *
+     * ⚠️ CRITICAL DATE EXTRACTION LOGIC - DO NOT MODIFY ⚠️
+     * This method handles complex date extraction with newline-separated content.
+     * Raw format: "Oct 06, 2025\nusername" (username appears on separate line)
+     * Note: Further sanitization happens in sanitize_upload_date()
+     *
+     * Selector: .col-6.col-md-3.col-lg-2 with subtitle "Uploaded" (as of Oct 5, 2025)
+     *
      * @since 1.0.0
      *
      * @param Crawler $node Parent node
-     * @return string Upload date
+     * @return string Upload date (may still contain username - cleaned by sanitize_upload_date)
      */
     private function extract_upload_date(Crawler $node) {
         try {
-            // Find the column with "Uploaded" subtitle
+            // ⚠️ CRITICAL: Find the column with "Uploaded" subtitle (as of Oct 5, 2025)
             $columns = $node->filter('.col-6.col-md-3.col-lg-2');
             foreach ($columns as $column) {
                 $col_crawler = new Crawler($column);
@@ -354,7 +389,7 @@ class Scraper {
                         // Get the full text content
                         $full_text = $text->text();
 
-                        // Split by newlines and take the first non-empty line
+                        // ⚠️ CRITICAL: Split by newlines to handle username on separate line
                         $lines = preg_split('/[\r\n]+/', $full_text);
                         foreach ($lines as $line) {
                             $line = trim($line);
@@ -384,6 +419,10 @@ class Scraper {
     /**
      * Extract platform from node
      *
+     * ⚠️ CRITICAL SELECTOR - DO NOT MODIFY ⚠️
+     * Selector: .col-6.col-md-3.col-lg-2 with subtitle "Platform" (as of Oct 5, 2025)
+     * Returns platform name (e.g., "iOS", "Android", "macOS", "Windows", "Linux")
+     *
      * @since 1.0.0
      *
      * @param Crawler $node Parent node
@@ -391,7 +430,7 @@ class Scraper {
      */
     private function extract_platform(Crawler $node) {
         try {
-            // Find the column with "Platform" subtitle
+            // ⚠️ CRITICAL: Find the column with "Platform" subtitle (as of Oct 5, 2025)
             $columns = $node->filter('.col-6.col-md-3.col-lg-2');
             foreach ($columns as $column) {
                 $col_crawler = new Crawler($column);
