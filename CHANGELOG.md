@@ -41,6 +41,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Better organization with comments
   - Added temporary files and logs
 
+### Fixed
+- **Composer Plugin Blocking Issue** (Oct 6, 2025):
+  - Added `dealerdirect/phpcodesniffer-composer-installer` to allowed plugins
+  - Fixes GitHub Actions failures for PHPCS, PHP Compatibility, and Security checks
+  - Required for Composer 2.2+ compatibility
+
 ---
 
 ## [1.1.0] - 2025-10-06
