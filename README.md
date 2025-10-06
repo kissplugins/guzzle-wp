@@ -1,6 +1,8 @@
-# Geekbench Browser Scraper - WordPress Plugin
+# Guzzle Scraper - WordPress Plugin
 
-A WordPress plugin for scraping and displaying Geekbench browser benchmark results with sortable tables.
+A WordPress plugin using Guzzle HTTP Client and Symfony DomCrawler
+
+for scraping and displaying Geekbench browser benchmark results with sortable tables.
 
 ## Features
 
