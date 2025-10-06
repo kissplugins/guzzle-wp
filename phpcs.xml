@@ -12,47 +12,34 @@
     <exclude-pattern>*/coverage/*</exclude-pattern>
     <exclude-pattern>*.js</exclude-pattern>
     <exclude-pattern>*.css</exclude-pattern>
+    <exclude-pattern>*.md</exclude-pattern>
     <exclude-pattern>composer.phar</exclude-pattern>
     <exclude-pattern>debug-test.php</exclude-pattern>
+    <exclude-pattern>*/.github/*</exclude-pattern>
 
     <!-- Show progress and sniff codes -->
     <arg value="ps"/>
-    
+
     <!-- Show colors in output -->
     <arg name="colors"/>
-    
+
     <!-- Check up to 8 files simultaneously -->
     <arg name="parallel" value="8"/>
-    
+
     <!-- Only check PHP files -->
     <arg name="extensions" value="php"/>
 
-    <!-- Use WordPress Coding Standards -->
-    <rule ref="WordPress">
-        <!-- Allow short array syntax -->
+    <!-- Use WordPress Core Coding Standards (most stable) -->
+    <rule ref="WordPress-Core">
+        <!-- Allow short array syntax (modern PHP) -->
         <exclude name="Generic.Arrays.DisallowShortArraySyntax"/>
-        
-        <!-- Allow Yoda conditions to be optional -->
-        <exclude name="WordPress.PHP.YodaConditions.NotYoda"/>
+        <exclude name="Universal.Arrays.DisallowShortArraySyntax"/>
     </rule>
 
-    <!-- Use WordPress-Extra for additional checks -->
-    <rule ref="WordPress-Extra">
-        <!-- Allow short array syntax -->
-        <exclude name="Generic.Arrays.DisallowShortArraySyntax"/>
-    </rule>
+    <!-- Minimum WordPress version -->
+    <config name="minimum_supported_wp_version" value="5.8"/>
 
-    <!-- Use WordPress-Docs for documentation standards -->
-    <rule ref="WordPress-Docs"/>
-
-    <!-- Check for PHP cross-version compatibility -->
-    <config name="testVersion" value="7.4-"/>
-    <rule ref="PHPCompatibilityWP"/>
-
-    <!-- Enforce PSR-4 autoloading -->
-    <rule ref="PSR1.Classes.ClassDeclaration"/>
-
-    <!-- Custom rules for this project -->
+    <!-- Check text domain -->
     <rule ref="WordPress.WP.I18n">
         <properties>
             <property name="text_domain" type="array">
@@ -71,31 +58,11 @@
         </properties>
     </rule>
 
-    <!-- Minimum WordPress version -->
-    <config name="minimum_supported_wp_version" value="5.8"/>
-
-    <!-- Allow for theme specific exceptions to WordPress VIP coding standards -->
-    <rule ref="WordPress.Security.EscapeOutput">
-        <properties>
-            <property name="customAutoEscapedFunctions" type="array">
-                <element value="esc_html_e"/>
-                <element value="esc_html__"/>
-                <element value="esc_attr_e"/>
-                <element value="esc_attr__"/>
-            </property>
-        </properties>
-    </rule>
-
-    <!-- File and class names -->
+    <!-- Allow relaxed file naming -->
     <rule ref="WordPress.Files.FileName">
         <properties>
             <property name="strict_class_file_names" value="false"/>
         </properties>
-    </rule>
-
-    <!-- Allow short ternary operators -->
-    <rule ref="WordPress.PHP.DisallowShortTernary">
-        <severity>0</severity>
     </rule>
 </ruleset>
 

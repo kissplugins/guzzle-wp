@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.1.1]
 
 ### Added
+- **Average Scores Row** (Oct 6, 2025):
+  - Dynamic bottom row in results table showing average Single-Core and Multi-Core scores
+  - Automatically calculates averages from all visible results on the page
+  - Displays result count (e.g., "25 results")
+  - Styled with blue highlight to distinguish from regular rows
+  - Updates dynamically when table is sorted or filtered
+  - JavaScript function `calculateAverages()` handles real-time calculation
 - **GitHub Actions CI/CD Pipeline** (Oct 6, 2025):
   - PHP Lint workflow for syntax checking across PHP 7.4-8.3
   - WordPress Coding Standards workflow with PHPCS
@@ -46,6 +53,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added `dealerdirect/phpcodesniffer-composer-installer` to allowed plugins
   - Fixes GitHub Actions failures for PHPCS, PHP Compatibility, and Security checks
   - Required for Composer 2.2+ compatibility
+- **PHPCS Configuration Issues** (Oct 6, 2025):
+  - Simplified `phpcs.xml` to use only WordPress-Core standard (most stable)
+  - Created separate `phpcs-compat.xml` for PHP Compatibility checks
+  - Removed references to non-existent WordPress sniffs
+  - Added verification steps in GitHub Actions workflows
+  - Added `continue-on-error` for informational checks
+  - Excluded `.github/` and `.md` files from PHPCS scans
 
 ---
 

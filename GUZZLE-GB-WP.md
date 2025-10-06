@@ -69,21 +69,21 @@ Example URL: https://browser.geekbench.com/search?q=Iphone18
 
 ### High-Level Checklist
 
-- [ ] **Create WordPress plugin foundation**
+- [x] **Create WordPress plugin foundation**
   - Add main plugin file (`geekbench-scraper.php`) with proper header comments
   - Set up plugin activation/deactivation hooks
   - Create folder structure: `/src`, `/vendor`, `/assets`, `/templates`, `/tests`
   - Add `.gitignore` for `/vendor` and IDE files
   - Create `README.md` with installation and usage instructions
 
-- [ ] **Implement PSR-4 autoloader**
+- [x] **Implement PSR-4 autoloader**
   - Create `composer.json` with PSR-4 namespace mapping (e.g., `GeekbenchScraper\\`)
   - Add Guzzle and symfony/dom-crawler as Composer dependencies
   - Add PHPUnit as dev dependency (`require-dev`)
   - Run `composer install` to generate autoloader and vendor directory
   - Configure autoload-dev for test namespace
 
-- [ ] **Establish plugin namespace architecture**
+- [x] **Establish plugin namespace architecture**
   - Create base classes in `/src`: `Plugin.php`, `Scraper.php`, `Admin.php`, `Shortcode.php`
   - Set up namespace structure following PSR-4 (matching folder hierarchy)
   - Bootstrap autoloader in main plugin file and initialize plugin class
@@ -164,6 +164,13 @@ Example URL: https://browser.geekbench.com/search?q=Iphone18
   - Add settings page for managing name translations
   - Display both translated and original names in results table
   - Store translations in WordPress options table
+
+- [x] **Add average scores calculation**
+  - Dynamic bottom row (tfoot) showing average Single-Core and Multi-Core scores
+  - Automatically calculates from all visible results on current page
+  - Displays result count for context
+  - Updates in real-time when table is sorted
+  - Styled with blue highlight for visual distinction
 
 ---
 
