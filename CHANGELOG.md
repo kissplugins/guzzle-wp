@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.1.1]
 
 ### Added
+- **Average Scores Row** (Oct 6, 2025):
+  - Dynamic bottom row in results table showing average Single-Core and Multi-Core scores
+  - Automatically calculates averages from all visible results on the page
+  - Displays result count (e.g., "25 results")
+  - Styled with blue highlight to distinguish from regular rows
+  - Updates dynamically when table is sorted or filtered
+  - JavaScript function `calculateAverages()` handles real-time calculation
 - **GitHub Actions CI/CD Pipeline** (Oct 6, 2025):
   - PHP Lint workflow for syntax checking across PHP 7.4-8.3
   - WordPress Coding Standards workflow with PHPCS

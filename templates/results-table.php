@@ -116,6 +116,23 @@ if (!isset($table_class)) {
                 </tr>
             <?php endif; ?>
         </tbody>
+        <?php if (!empty($results)): ?>
+        <tfoot>
+            <tr class="average-row">
+                <td colspan="3" class="average-label">
+                    <strong><?php esc_html_e('Average Scores', 'geekbench-scraper'); ?></strong>
+                    <small class="result-count">(<?php echo count($results); ?> <?php echo _n('result', 'results', count($results), 'geekbench-scraper'); ?>)</small>
+                </td>
+                <td class="single-core score average-score">
+                    <strong id="avg-single-core">-</strong>
+                </td>
+                <td class="multi-core score average-score">
+                    <strong id="avg-multi-core">-</strong>
+                </td>
+                <td></td>
+            </tr>
+        </tfoot>
+        <?php endif; ?>
     </table>
 </div>
 
@@ -242,19 +259,55 @@ if (!isset($table_class)) {
     font-style: italic;
 }
 
+/* Average Row Styling */
+.geekbench-table tfoot tr.average-row {
+    background: #f9f9f9;
+    border-top: 3px solid #2271b1;
+    font-weight: 600;
+}
+
+.geekbench-table tfoot tr.average-row:hover {
+    background: #f9f9f9;
+}
+
+.geekbench-table tfoot .average-label {
+    padding: 12px;
+    color: #2271b1;
+}
+
+.geekbench-table tfoot .result-count {
+    display: inline-block;
+    margin-left: 8px;
+    color: #666;
+    font-weight: 400;
+    font-size: 0.9em;
+}
+
+.geekbench-table tfoot .average-score {
+    background: #e8f4f8;
+    color: #135e96;
+    font-size: 1.05em;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
     .geekbench-table {
         font-size: 0.9em;
     }
-    
+
     .geekbench-table th,
     .geekbench-table td {
         padding: 8px;
     }
-    
+
     .geekbench-table .processor {
         font-size: 0.8em;
+    }
+
+    .geekbench-table tfoot .result-count {
+        display: block;
+        margin-left: 0;
+        margin-top: 4px;
     }
 }
 </style>

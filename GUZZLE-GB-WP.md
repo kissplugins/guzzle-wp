@@ -165,6 +165,13 @@ Example URL: https://browser.geekbench.com/search?q=Iphone18
   - Display both translated and original names in results table
   - Store translations in WordPress options table
 
+- [x] **Add average scores calculation**
+  - Dynamic bottom row (tfoot) showing average Single-Core and Multi-Core scores
+  - Automatically calculates from all visible results on current page
+  - Displays result count for context
+  - Updates in real-time when table is sorted
+  - Styled with blue highlight for visual distinction
+
 ---
 
 ## Phase 4: Frontend Shortcode Implementation
