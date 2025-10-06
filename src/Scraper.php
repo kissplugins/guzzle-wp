@@ -113,13 +113,16 @@ class Scraper {
         try {
             // Fetch HTML from Geekbench
             $html = $this->fetch_html($query);
-            
+
             // Parse HTML and extract data
             $results = $this->parse_html($html);
-            
+
+            // Post-process results to sanitize data
+            $results = $this->sanitize_results($results);
+
             // Cache results
             $this->cache_results($query, $results);
-            
+
             return $results;
             
         } catch (GuzzleException $e) {
@@ -201,29 +204,52 @@ class Scraper {
         
         return $results;
     }
-    
+
     /**
-     * Extract text from node using CSS selector
+     * Sanitize results data
+     *
+     * Post-processes the parsed results to clean up and normalize data.
+     * Specifically handles cleaning upload_date field to remove usernames
+     * and other extraneous text.
      *
      * @since 1.0.0
      *
-     * @param Crawler $node Parent node
-     * @param string $selector CSS selector
-     * @param int $index Index of element to extract (for multiple matches)
-     * @return string Extracted text
+     * @param array $results Array of parsed results
+     * @return array Sanitized results
      */
-    private function extract_text(Crawler $node, $selector, $index = 0) {
-        try {
-            $elements = $node->filter($selector);
-            if ($elements->count() > $index) {
-                return trim($elements->eq($index)->filter('.list-col-text, a')->text());
+    private function sanitize_results($results) {
+        foreach ($results as &$result) {
+            // Sanitize upload_date to remove usernames and extra text
+            if (!empty($result['upload_date'])) {
+                $result['upload_date'] = $this->sanitize_upload_date($result['upload_date']);
             }
-        } catch (\Exception $e) {
-            // Return empty string on error
         }
-        return '';
+        return $results;
     }
-    
+
+    /**
+     * Sanitize upload date string
+     *
+     * Removes usernames and other extraneous text from the upload date,
+     * keeping only the date portion in format "MMM DD, YYYY".
+     *
+     * @since 1.0.0
+     *
+     * @param string $date_string Raw date string that may contain username
+     * @return string Cleaned date string
+     */
+    private function sanitize_upload_date($date_string) {
+        // Pattern to match date format: "Oct 06, 2025"
+        // This matches: Month (3 letters) + space + day (1-2 digits) + comma + space + year (4 digits)
+        if (preg_match('/([A-Z][a-z]{2}\s+\d{1,2},\s+\d{4})/', $date_string, $matches)) {
+            return $matches[1];
+        }
+
+        // If no match, return the original (shouldn't happen with valid data)
+        return $date_string;
+    }
+
+
     /**
      * Extract attribute from node using CSS selector
      *
@@ -325,11 +351,27 @@ class Scraper {
                 if ($subtitle->count() > 0 && trim($subtitle->text()) === 'Uploaded') {
                     $text = $col_crawler->filter('.list-col-text');
                     if ($text->count() > 0) {
-                        // Get text and remove any username links
-                        $date_text = trim($text->text());
-                        // Remove everything after newline (username)
-                        $date_text = explode("\n", $date_text)[0];
-                        return trim($date_text);
+                        // Get the full text content
+                        $full_text = $text->text();
+
+                        // Split by newlines and take the first non-empty line
+                        $lines = preg_split('/[\r\n]+/', $full_text);
+                        foreach ($lines as $line) {
+                            $line = trim($line);
+                            // Return the first line that looks like a date
+                            // (contains month abbreviation or is in format like "Oct 06, 2025")
+                            if (!empty($line) && preg_match('/^[A-Z][a-z]{2}\s+\d{1,2},\s+\d{4}/', $line)) {
+                                return $line;
+                            }
+                        }
+
+                        // Fallback: just return the first non-empty line
+                        foreach ($lines as $line) {
+                            $line = trim($line);
+                            if (!empty($line)) {
+                                return $line;
+                            }
+                        }
                     }
                 }
             }
