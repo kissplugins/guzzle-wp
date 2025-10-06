@@ -219,7 +219,27 @@ class Admin {
             wp_die(__('You do not have sufficient permissions to access this page.', 'geekbench-scraper'));
         }
 
-        // Handle form submission
+        // Handle frontend settings form submission
+        if (isset($_POST['save_frontend_settings']) && check_admin_referer('geekbench_frontend_settings_nonce')) {
+            $search_hint = isset($_POST['search_hint']) ? sanitize_text_field($_POST['search_hint']) : 'Search for any device';
+            update_option('geekbench_search_hint', $search_hint);
+            echo '<div class="notice notice-success is-dismissible"><p>' . __('Frontend settings saved successfully!', 'geekbench-scraper') . '</p></div>';
+        }
+
+        // Handle reCAPTCHA settings form submission
+        if (isset($_POST['save_recaptcha_settings']) && check_admin_referer('geekbench_recaptcha_settings_nonce')) {
+            $recaptcha_enabled = isset($_POST['recaptcha_enabled']) ? 1 : 0;
+            $recaptcha_site_key = isset($_POST['recaptcha_site_key']) ? sanitize_text_field($_POST['recaptcha_site_key']) : '';
+            $recaptcha_secret_key = isset($_POST['recaptcha_secret_key']) ? sanitize_text_field($_POST['recaptcha_secret_key']) : '';
+
+            update_option('geekbench_recaptcha_enabled', $recaptcha_enabled);
+            update_option('geekbench_recaptcha_site_key', $recaptcha_site_key);
+            update_option('geekbench_recaptcha_secret_key', $recaptcha_secret_key);
+
+            echo '<div class="notice notice-success is-dismissible"><p>' . __('reCAPTCHA settings saved successfully!', 'geekbench-scraper') . '</p></div>';
+        }
+
+        // Handle translations form submission
         if (isset($_POST['geekbench_save_translations']) && check_admin_referer('geekbench_translations_nonce')) {
             $translations = [];
 

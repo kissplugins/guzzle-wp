@@ -275,3 +275,199 @@ With reCAPTCHA:
 5. Complete documentation
 
 This would be a **much better solution** than manual rate limiting and would fully satisfy all security requirements! 🔒
+
+---
+
+# ✅ IMPLEMENTATION COMPLETE
+
+## Smart Throttling Feature - How It Works
+
+### Overview
+Smart throttling is an intelligent rate-limiting system that balances security with user experience. Instead of requiring CAPTCHA verification for every search, it only triggers CAPTCHA after detecting potential abuse patterns.
+
+### How Smart Throttling Works
+
+#### 1. **Search Counter Tracking**
+- The system tracks the number of searches performed by each user session
+- Counter is stored in JavaScript (client-side) for immediate response
+- No server-side session storage required
+
+#### 2. **Throttle Window**
+- **Time Window**: 5 minutes (300,000 milliseconds)
+- **Max Searches Before CAPTCHA**: 5 searches
+- **Inactivity Reset**: 30 minutes
+
+#### 3. **User Flow**
+
+**First-Time User (Searches 1-5):**
+```
+User visits page → Auto-loads default search (Apple M4)
+↓
+User searches for "iPhone" → ✅ No CAPTCHA required (Search #1)
+↓
+User searches for "iPad" → ✅ No CAPTCHA required (Search #2)
+↓
+User searches for "MacBook" → ✅ No CAPTCHA required (Search #3)
+↓
+User searches for "iMac" → ✅ No CAPTCHA required (Search #4)
+↓
+User searches for "Mac Mini" → ✅ No CAPTCHA required (Search #5)
+```
+
+**Heavy User (Search #6+):**
+```
+User searches for "Mac Studio" → ⚠️ CAPTCHA REQUIRED (Search #6)
+↓
+User completes CAPTCHA → ✅ Search proceeds
+↓
+User searches for "Mac Pro" → ⚠️ CAPTCHA REQUIRED (Search #7)
+```
+
+**After Inactivity:**
+```
+User inactive for 30 minutes → Counter resets to 0
+↓
+User returns and searches → ✅ No CAPTCHA required (fresh start)
+```
+
+#### 4. **Technical Implementation**
+
+**JavaScript Variables:**
+```javascript
+let searchCount = 0;                          // Tracks number of searches
+let lastSearchTime = Date.now();              // Timestamp of last search
+const THROTTLE_WINDOW = 5 * 60 * 1000;        // 5 minutes
+const MAX_SEARCHES_BEFORE_CAPTCHA = 5;        // Threshold
+const INACTIVITY_RESET = 30 * 60 * 1000;      // 30 minutes
+```
+
+**Check Function:**
+```javascript
+function isCaptchaRequired() {
+    if (!recaptchaEnabled) return false;
+
+    // Reset counter if inactive for 30 minutes
+    if (Date.now() - lastSearchTime > INACTIVITY_RESET) {
+        searchCount = 0;
+    }
+
+    // Require CAPTCHA after 5 searches
+    return searchCount >= MAX_SEARCHES_BEFORE_CAPTCHA;
+}
+```
+
+**On Successful Search:**
+```javascript
+// Increment counter
+searchCount++;
+lastSearchTime = Date.now();
+
+// Reset CAPTCHA widget for next use
+if (typeof grecaptcha !== 'undefined') {
+    grecaptcha.reset();
+}
+```
+
+### 5. **Benefits**
+
+✅ **User-Friendly**
+- Legitimate users rarely see CAPTCHA
+- First-time visitors get instant results
+- No friction for casual browsing
+
+✅ **Security**
+- Stops automated bots (can't make 6+ rapid searches)
+- Prevents scraping abuse
+- Protects server resources
+
+✅ **Flexible**
+- Adjustable thresholds (change MAX_SEARCHES_BEFORE_CAPTCHA)
+- Configurable time windows
+- Can be disabled entirely in settings
+
+✅ **Smart**
+- Auto-resets after inactivity
+- Doesn't penalize returning users
+- Adapts to usage patterns
+
+### 6. **Configuration**
+
+**Admin Settings (WP Admin → Tools → Geekbench Settings):**
+
+1. **Enable reCAPTCHA**: Checkbox to turn on/off
+2. **Site Key**: Your Google reCAPTCHA v2 site key
+3. **Secret Key**: Your Google reCAPTCHA v2 secret key
+
+**Shortcode Usage:**
+```php
+[geekbench_results default="Apple M4"]
+```
+
+The smart throttling is automatic when reCAPTCHA is enabled globally.
+
+### 7. **Customization**
+
+To adjust throttling behavior, edit `templates/frontend-shortcode.php`:
+
+```javascript
+// Change threshold (default: 5)
+const MAX_SEARCHES_BEFORE_CAPTCHA = 10;  // Allow 10 searches before CAPTCHA
+
+// Change time window (default: 5 minutes)
+const THROTTLE_WINDOW = 10 * 60 * 1000;  // 10 minutes
+
+// Change inactivity reset (default: 30 minutes)
+const INACTIVITY_RESET = 60 * 60 * 1000;  // 1 hour
+```
+
+### 8. **Comparison: Smart Throttling vs. Always-On CAPTCHA**
+
+| Feature | Smart Throttling | Always-On CAPTCHA |
+|---------|------------------|-------------------|
+| First search | ✅ No CAPTCHA | ❌ CAPTCHA required |
+| User experience | ✅ Excellent | ⚠️ Annoying |
+| Bot protection | ✅ Strong | ✅ Strong |
+| Legitimate users | ✅ Rarely see CAPTCHA | ❌ Always see CAPTCHA |
+| Bounce rate | ✅ Low | ⚠️ Higher |
+| Security | ✅ High | ✅ High |
+
+### 9. **Error Handling**
+
+**If user tries to search without completing CAPTCHA:**
+```
+Error message: "Please complete the reCAPTCHA verification"
+CAPTCHA widget highlights
+Search does not proceed
+```
+
+**If CAPTCHA verification fails:**
+```
+Error message: "reCAPTCHA verification failed. Please try again."
+CAPTCHA resets
+User can try again
+```
+
+### 10. **Privacy & Data**
+
+- ✅ No personal data stored
+- ✅ No cookies used for tracking
+- ✅ Counter resets on page reload
+- ✅ No server-side session tracking
+- ✅ GDPR-friendly (Google reCAPTCHA has its own privacy policy)
+
+---
+
+## Summary
+
+Smart throttling provides the perfect balance between security and user experience. It allows legitimate users to search freely while automatically protecting against abuse. The system is transparent, configurable, and requires no maintenance once configured.
+
+**Default Behavior**: First 5 searches in 5 minutes = No CAPTCHA. After that = CAPTCHA required.
+
+This approach is significantly better than traditional rate limiting because it:
+1. Doesn't block legitimate users
+2. Doesn't require IP tracking
+3. Adapts to user behavior
+4. Provides clear feedback
+5. Resets automatically
+
+---

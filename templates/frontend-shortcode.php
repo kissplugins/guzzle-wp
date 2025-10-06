@@ -24,55 +24,75 @@ if (!defined('ABSPATH')) {
 
 // Generate unique ID for this shortcode instance
 $instance_id = 'geekbench-' . uniqid();
+
+// Get hint text from settings
+$hint_text = get_option('geekbench_search_hint', 'Search for any device');
+
+// Check if reCAPTCHA is enabled
+$recaptcha_enabled = get_option('geekbench_recaptcha_enabled', 0);
+$recaptcha_site_key = get_option('geekbench_recaptcha_site_key', '');
 ?>
 
-<div class="geekbench-scraper-frontend" id="<?php echo esc_attr($instance_id); ?>">
-    
-    <?php if ($show_search): ?>
-        <!-- Search Form -->
-        <div class="geekbench-search-form">
-            <form class="geekbench-search" data-instance="<?php echo esc_attr($instance_id); ?>">
-                <div class="search-input-group">
-                    <input 
-                        type="text" 
-                        name="query" 
-                        class="geekbench-search-input" 
-                        value="<?php echo esc_attr($query); ?>"
-                        placeholder="<?php esc_attr_e('Search Geekbench...', 'geekbench-scraper'); ?>"
-                    >
-                    <button type="submit" class="geekbench-search-button">
-                        <?php esc_html_e('Search', 'geekbench-scraper'); ?>
-                    </button>
-                    
-                    <?php if ($show_refresh): ?>
-                        <button type="button" class="geekbench-refresh-button">
-                            <?php esc_html_e('Refresh', 'geekbench-scraper'); ?>
-                        </button>
-                    <?php endif; ?>
+<div class="geekbench-scraper-frontend" id="<?php echo esc_attr($instance_id); ?>" data-default-query="<?php echo esc_attr($query); ?>" data-limit="<?php echo esc_attr($limit); ?>">
+
+    <!-- Modern Search Form -->
+    <div class="geekbench-search-container">
+        <form class="geekbench-search-form" data-instance="<?php echo esc_attr($instance_id); ?>">
+            <div class="search-input-wrapper">
+                <input
+                    type="text"
+                    name="query"
+                    class="geekbench-search-input"
+                    value="<?php echo esc_attr($query); ?>"
+                    placeholder="<?php echo esc_attr($hint_text); ?>"
+                    autocomplete="off"
+                >
+                <button type="submit" class="geekbench-search-submit" aria-label="<?php esc_attr_e('Search', 'geekbench-scraper'); ?>">
+                    <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <path d="m21 21-4.35-4.35"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Hint Text -->
+            <p class="search-hint"><?php echo esc_html($hint_text); ?></p>
+
+            <!-- reCAPTCHA Widget -->
+            <?php if ($recaptcha_enabled && !empty($recaptcha_site_key)): ?>
+                <div class="recaptcha-wrapper">
+                    <div class="g-recaptcha"
+                         data-sitekey="<?php echo esc_attr($recaptcha_site_key); ?>"
+                         data-callback="geekbenchRecaptchaCallback_<?php echo esc_attr($instance_id); ?>">
+                    </div>
                 </div>
-                <input type="hidden" name="limit" value="<?php echo esc_attr($limit); ?>">
-            </form>
-        </div>
-    <?php elseif ($show_refresh): ?>
-        <!-- Refresh Button Only -->
-        <div class="geekbench-controls">
-            <button type="button" class="geekbench-refresh-button" data-instance="<?php echo esc_attr($instance_id); ?>" data-query="<?php echo esc_attr($query); ?>" data-limit="<?php echo esc_attr($limit); ?>">
-                <?php esc_html_e('Refresh Results', 'geekbench-scraper'); ?>
-            </button>
-        </div>
-    <?php endif; ?>
-    
+            <?php endif; ?>
+
+            <input type="hidden" name="limit" value="<?php echo esc_attr($limit); ?>">
+            <input type="hidden" name="instance_id" value="<?php echo esc_attr($instance_id); ?>">
+        </form>
+    </div>
+
     <!-- Error Message -->
-    <?php if ($error): ?>
-        <div class="geekbench-error">
-            <p><strong><?php esc_html_e('Error:', 'geekbench-scraper'); ?></strong> <?php echo esc_html($error); ?></p>
+    <div class="geekbench-error" style="display: none;">
+        <div class="error-content">
+            <svg class="error-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+            <p class="error-message"></p>
         </div>
-    <?php endif; ?>
-    
+    </div>
+
     <!-- Loading Indicator -->
     <div class="geekbench-loading" style="display: none;">
-        <div class="loading-spinner"></div>
-        <p><?php esc_html_e('Loading results...', 'geekbench-scraper'); ?></p>
+        <div class="loading-spinner">
+            <div class="spinner-ring"></div>
+            <div class="spinner-ring"></div>
+            <div class="spinner-ring"></div>
+        </div>
+        <p class="loading-text"><?php esc_html_e('Loading results...', 'geekbench-scraper'); ?></p>
     </div>
     
     <!-- Results Container -->
@@ -108,113 +128,270 @@ $instance_id = 'geekbench-' . uniqid();
 </div>
 
 <style>
+/* Modern Frontend Styles */
 .geekbench-scraper-frontend {
-    margin: 20px 0;
+    max-width: 1200px;
+    margin: 30px auto;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+}
+
+/* Search Container */
+.geekbench-search-container {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 30px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    margin-bottom: 30px;
 }
 
 .geekbench-search-form {
-    margin-bottom: 20px;
+    width: 100%;
 }
 
-.search-input-group {
+/* Search Input Wrapper */
+.search-input-wrapper {
+    position: relative;
     display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
+    align-items: center;
+    background: #f8f9fa;
+    border: 2px solid #e1e4e8;
+    border-radius: 50px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.search-input-wrapper:focus-within {
+    border-color: #2271b1;
+    box-shadow: 0 0 0 3px rgba(34, 113, 177, 0.1);
+    background: #ffffff;
 }
 
 .geekbench-search-input {
     flex: 1;
-    min-width: 200px;
-    padding: 10px 15px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    font-size: 16px;
-}
-
-.geekbench-search-button,
-.geekbench-refresh-button {
-    padding: 10px 20px;
-    background: #2271b1;
-    color: white;
+    padding: 18px 24px;
     border: none;
-    border-radius: 4px;
+    background: transparent;
+    font-size: 18px;
+    outline: none;
+    color: #24292e;
+}
+
+.geekbench-search-input::placeholder {
+    color: #6a737d;
+}
+
+.geekbench-search-submit {
+    padding: 12px 24px;
+    background: #2271b1;
+    border: none;
     cursor: pointer;
-    font-size: 16px;
-    transition: background 0.3s;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0 50px 50px 0;
+    margin-right: 4px;
 }
 
-.geekbench-search-button:hover,
-.geekbench-refresh-button:hover {
+.geekbench-search-submit:hover {
     background: #135e96;
+    transform: scale(1.05);
 }
 
-.geekbench-refresh-button {
-    background: #666;
+.geekbench-search-submit:active {
+    transform: scale(0.98);
 }
 
-.geekbench-refresh-button:hover {
-    background: #444;
+.search-icon {
+    width: 24px;
+    height: 24px;
+    color: #ffffff;
 }
 
-.geekbench-controls {
-    margin-bottom: 20px;
+/* Hint Text */
+.search-hint {
+    margin: 12px 0 0 24px;
+    font-size: 14px;
+    color: #6a737d;
+    font-weight: 400;
 }
 
+/* reCAPTCHA Wrapper */
+.recaptcha-wrapper {
+    margin-top: 20px;
+    display: flex;
+    justify-content: center;
+}
+
+/* Error Message */
 .geekbench-error {
-    background: #f8d7da;
-    border: 1px solid #f5c6cb;
-    color: #721c24;
-    padding: 15px;
-    border-radius: 4px;
+    background: #fff5f5;
+    border: 1px solid #feb2b2;
+    border-radius: 8px;
+    padding: 16px 20px;
     margin-bottom: 20px;
+    display: flex;
+    align-items: flex-start;
 }
 
+.error-content {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.error-icon {
+    width: 24px;
+    height: 24px;
+    color: #e53e3e;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.error-message {
+    color: #742a2a;
+    margin: 0;
+    font-size: 15px;
+    line-height: 1.5;
+}
+
+/* Loading Indicator */
 .geekbench-loading {
     text-align: center;
-    padding: 40px;
+    padding: 60px 20px;
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .loading-spinner {
-    border: 4px solid #f3f3f3;
-    border-top: 4px solid #2271b1;
+    display: inline-block;
+    position: relative;
+    width: 80px;
+    height: 80px;
+}
+
+.spinner-ring {
+    box-sizing: border-box;
+    display: block;
+    position: absolute;
+    width: 64px;
+    height: 64px;
+    margin: 8px;
+    border: 6px solid #2271b1;
     border-radius: 50%;
-    width: 40px;
-    height: 40px;
-    animation: spin 1s linear infinite;
-    margin: 0 auto 15px;
+    animation: spinner-ring 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+    border-color: #2271b1 transparent transparent transparent;
 }
 
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+.spinner-ring:nth-child(1) {
+    animation-delay: -0.45s;
 }
 
-.geekbench-empty {
-    text-align: center;
-    padding: 40px;
-    color: #666;
-    font-style: italic;
+.spinner-ring:nth-child(2) {
+    animation-delay: -0.3s;
+}
+
+.spinner-ring:nth-child(3) {
+    animation-delay: -0.15s;
+}
+
+@keyframes spinner-ring {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+.loading-text {
+    margin-top: 20px;
+    font-size: 16px;
+    color: #6a737d;
+    font-weight: 500;
+}
+
+/* Results Container */
+.geekbench-results {
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
 }
 
 .results-header {
-    margin-bottom: 15px;
+    padding: 24px 30px;
+    border-bottom: 1px solid #e1e4e8;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #ffffff;
 }
 
 .results-header h3 {
-    margin: 0 0 5px 0;
-    font-size: 1.5em;
+    margin: 0 0 8px 0;
+    font-size: 24px;
+    font-weight: 600;
 }
 
 .results-count {
     margin: 0;
-    color: #666;
-    font-size: 0.9em;
+    font-size: 14px;
+    opacity: 0.9;
 }
 
-/* Responsive */
-@media (max-width: 600px) {
-    .search-input-group {
-        flex-direction: column;
+.geekbench-empty {
+    text-align: center;
+    padding: 60px 20px;
+    color: #6a737d;
+}
+
+.geekbench-empty p {
+    font-size: 16px;
+    margin: 0;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .geekbench-search-container {
+        padding: 20px;
+    }
+
+    .geekbench-search-input {
+        font-size: 16px;
+        padding: 16px 20px;
+    }
+
+    .search-hint {
+        font-size: 13px;
+        margin-left: 20px;
+    }
+
+    .results-header {
+        padding: 20px;
+    }
+
+    .results-header h3 {
+        font-size: 20px;
+    }
+}
+
+@media (max-width: 480px) {
+    .geekbench-scraper-frontend {
+        margin: 20px 10px;
+    }
+
+    .geekbench-search-container {
+        padding: 16px;
+        border-radius: 8px;
+    }
+
+    .search-input-wrapper {
+        border-radius: 40px;
+    }
+
+    .geekbench-search-input {
+        font-size: 15px;
+        padding: 14px 18px;
     }
     
     .geekbench-search-input {
@@ -232,32 +409,107 @@ $instance_id = 'geekbench-' . uniqid();
 (function() {
     const instance = document.getElementById('<?php echo esc_js($instance_id); ?>');
     if (!instance) return;
-    
-    const searchForm = instance.querySelector('.geekbench-search');
-    const refreshButton = instance.querySelector('.geekbench-refresh-button');
+
+    const searchForm = instance.querySelector('.geekbench-search-form');
+    const searchInput = instance.querySelector('.geekbench-search-input');
     const resultsContainer = instance.querySelector('.geekbench-results');
     const loadingIndicator = instance.querySelector('.geekbench-loading');
-    
+    const errorContainer = instance.querySelector('.geekbench-error');
+    const errorMessage = instance.querySelector('.error-message');
+    const recaptchaEnabled = <?php echo $recaptcha_enabled ? 'true' : 'false'; ?>;
+
+    // Smart throttling: Track search count
+    let searchCount = 0;
+    let lastSearchTime = Date.now();
+    const THROTTLE_WINDOW = 5 * 60 * 1000; // 5 minutes
+    const MAX_SEARCHES_BEFORE_CAPTCHA = 5;
+
+    // Reset counter after inactivity
+    function checkThrottleReset() {
+        if (Date.now() - lastSearchTime > 30 * 60 * 1000) { // 30 minutes
+            searchCount = 0;
+        }
+    }
+
+    // Check if CAPTCHA is required
+    function isCaptchaRequired() {
+        if (!recaptchaEnabled) return false;
+        checkThrottleReset();
+        return searchCount >= MAX_SEARCHES_BEFORE_CAPTCHA;
+    }
+
+    // Auto-run default search on page load
+    window.addEventListener('DOMContentLoaded', function() {
+        const defaultQuery = instance.dataset.defaultQuery;
+        const limit = instance.dataset.limit;
+        if (defaultQuery) {
+            // First search doesn't require CAPTCHA
+            fetchResults(defaultQuery, limit, false, true);
+        }
+    });
+
     // Search form handler
     if (searchForm) {
         searchForm.addEventListener('submit', function(e) {
             e.preventDefault();
-            const formData = new FormData(searchForm);
-            fetchResults(formData.get('query'), formData.get('limit'));
+
+            const query = searchInput.value.trim();
+            const limit = searchForm.querySelector('[name="limit"]').value;
+
+            if (!query) {
+                showError('<?php esc_html_e('Please enter a search term', 'geekbench-scraper'); ?>');
+                return;
+            }
+
+            // Check if CAPTCHA is required and verify
+            if (isCaptchaRequired() && typeof grecaptcha !== 'undefined') {
+                const recaptchaResponse = grecaptcha.getResponse();
+                if (!recaptchaResponse) {
+                    showError('<?php esc_html_e('Please complete the reCAPTCHA verification', 'geekbench-scraper'); ?>');
+                    return;
+                }
+            }
+
+            fetchResults(query, limit);
+        });
+
+        // Enter key support
+        searchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                searchForm.dispatchEvent(new Event('submit'));
+            }
         });
     }
-    
-    // Refresh button handler
-    if (refreshButton) {
-        refreshButton.addEventListener('click', function() {
-            const query = refreshButton.dataset.query || searchForm?.querySelector('[name="query"]')?.value;
-            const limit = refreshButton.dataset.limit || searchForm?.querySelector('[name="limit"]')?.value;
-            fetchResults(query, limit, true);
-        });
+
+    // reCAPTCHA callback
+    window['geekbenchRecaptchaCallback_<?php echo esc_js($instance_id); ?>'] = function() {
+        // CAPTCHA completed, enable search
+        console.log('reCAPTCHA verified');
+    };
+
+    // Show error message
+    function showError(message) {
+        if (errorContainer && errorMessage) {
+            errorMessage.textContent = message;
+            errorContainer.style.display = 'block';
+            setTimeout(() => {
+                errorContainer.style.display = 'none';
+            }, 5000);
+        }
     }
-    
+
+    // Hide error message
+    function hideError() {
+        if (errorContainer) {
+            errorContainer.style.display = 'none';
+        }
+    }
+
     // Fetch results via AJAX
-    function fetchResults(query, limit, refresh = false) {
+    function fetchResults(query, limit, refresh = false, isAutoLoad = false) {
+        hideError();
+
         // Show loading
         if (loadingIndicator) {
             loadingIndicator.style.display = 'block';
@@ -265,13 +517,21 @@ $instance_id = 'geekbench-' . uniqid();
         if (resultsContainer) {
             resultsContainer.style.opacity = '0.5';
         }
-        
+
         // Prepare data
         const data = new FormData();
-        data.append('action', refresh ? 'geekbench_scraper_refresh' : 'geekbench_scraper_fetch');
+        data.append('action', 'geekbench_scraper_fetch');
         data.append('query', query);
         data.append('limit', limit);
-        
+
+        // Add reCAPTCHA token if required
+        if (isCaptchaRequired() && typeof grecaptcha !== 'undefined') {
+            const recaptchaResponse = grecaptcha.getResponse();
+            if (recaptchaResponse) {
+                data.append('g-recaptcha-response', recaptchaResponse);
+            }
+        }
+
         // AJAX request
         fetch('<?php echo esc_url(admin_url('admin-ajax.php')); ?>', {
             method: 'POST',
@@ -279,20 +539,40 @@ $instance_id = 'geekbench-' . uniqid();
         })
         .then(response => response.json())
         .then(data => {
-            if (data.success && resultsContainer) {
-                resultsContainer.innerHTML = data.data.html;
-            } else {
-                if (resultsContainer) {
-                    resultsContainer.innerHTML = '<div class="geekbench-error"><p>' + (data.data?.message || 'An error occurred') + '</p></div>';
+            if (data.success) {
+                // Update results
+                if (resultsContainer && data.data.html) {
+                    resultsContainer.innerHTML = data.data.html;
+                    resultsContainer.style.opacity = '1';
                 }
+
+                // Increment search count for throttling
+                if (!isAutoLoad) {
+                    searchCount++;
+                    lastSearchTime = Date.now();
+                }
+
+                // Reset reCAPTCHA if it was used
+                if (typeof grecaptcha !== 'undefined') {
+                    grecaptcha.reset();
+                }
+
+                // Re-initialize table sorting if available
+                if (typeof initTableSort === 'function') {
+                    initTableSort();
+                }
+            } else {
+                // Show error
+                const errorMsg = data.data?.message || '<?php esc_html_e('An error occurred', 'geekbench-scraper'); ?>';
+                showError(errorMsg);
             }
         })
         .catch(error => {
-            if (resultsContainer) {
-                resultsContainer.innerHTML = '<div class="geekbench-error"><p>Network error occurred</p></div>';
-            }
+            console.error('Fetch error:', error);
+            showError('<?php esc_html_e('Network error occurred. Please try again.', 'geekbench-scraper'); ?>');
         })
         .finally(() => {
+            // Hide loading
             if (loadingIndicator) {
                 loadingIndicator.style.display = 'none';
             }
