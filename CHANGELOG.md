@@ -5,7 +5,7 @@ All notable changes to the Geekbench Browser Scraper WordPress plugin will be do
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.1.1]
 
 ### Added
 - **GitHub Actions CI/CD Pipeline** (Oct 6, 2025):
@@ -40,6 +40,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added PHPCS cache, coverage reports, IDE files
   - Better organization with comments
   - Added temporary files and logs
+
+### Fixed
+- **Composer Plugin Blocking Issue** (Oct 6, 2025):
+  - Added `dealerdirect/phpcodesniffer-composer-installer` to allowed plugins
+  - Fixes GitHub Actions failures for PHPCS, PHP Compatibility, and Security checks
+  - Required for Composer 2.2+ compatibility
 
 ---
 
