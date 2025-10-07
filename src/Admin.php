@@ -221,7 +221,7 @@ class Admin {
 
         // Handle frontend settings form submission
         if (isset($_POST['save_frontend_settings']) && check_admin_referer('geekbench_frontend_settings_nonce')) {
-            $search_hint = isset($_POST['search_hint']) ? sanitize_text_field($_POST['search_hint']) : 'Search for any device';
+            $search_hint = isset($_POST['search_hint']) ? sanitize_text_field(wp_unslash($_POST['search_hint'])) : 'Search for any device';
             update_option('geekbench_search_hint', $search_hint);
             echo '<div class="notice notice-success is-dismissible"><p>' . __('Frontend settings saved successfully!', 'geekbench-scraper') . '</p></div>';
         }
@@ -229,8 +229,8 @@ class Admin {
         // Handle reCAPTCHA settings form submission
         if (isset($_POST['save_recaptcha_settings']) && check_admin_referer('geekbench_recaptcha_settings_nonce')) {
             $recaptcha_enabled = isset($_POST['recaptcha_enabled']) ? 1 : 0;
-            $recaptcha_site_key = isset($_POST['recaptcha_site_key']) ? sanitize_text_field($_POST['recaptcha_site_key']) : '';
-            $recaptcha_secret_key = isset($_POST['recaptcha_secret_key']) ? sanitize_text_field($_POST['recaptcha_secret_key']) : '';
+            $recaptcha_site_key = isset($_POST['recaptcha_site_key']) ? sanitize_text_field(wp_unslash($_POST['recaptcha_site_key'])) : '';
+            $recaptcha_secret_key = isset($_POST['recaptcha_secret_key']) ? sanitize_text_field(wp_unslash($_POST['recaptcha_secret_key'])) : '';
 
             update_option('geekbench_recaptcha_enabled', $recaptcha_enabled);
             update_option('geekbench_recaptcha_site_key', $recaptcha_site_key);
@@ -244,8 +244,9 @@ class Admin {
             $translations = [];
 
             if (isset($_POST['system_names']) && isset($_POST['display_names'])) {
-                $system_names = array_map('sanitize_text_field', $_POST['system_names']);
-                $display_names = array_map('sanitize_text_field', $_POST['display_names']);
+                // Unslash arrays first, then sanitize
+                $system_names = array_map('sanitize_text_field', array_map('wp_unslash', $_POST['system_names']));
+                $display_names = array_map('sanitize_text_field', array_map('wp_unslash', $_POST['display_names']));
 
                 foreach ($system_names as $index => $system_name) {
                     if (!empty($system_name) && !empty($display_names[$index])) {
