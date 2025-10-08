@@ -43,6 +43,25 @@ class Shortcode {
         add_shortcode('geekbench_results', [$this, 'render']);
         file_put_contents($log_file, date('[Y-m-d H:i:s] ') . "[Shortcode] Shortcode registered\n", FILE_APPEND);
 
+        // ============================================================================
+        // CRITICAL: AJAX Handler Registration for Frontend Search
+        // ============================================================================
+        // DO NOT REMOVE OR MODIFY THESE HANDLERS WITHOUT TESTING FRONTEND SEARCH!
+        //
+        // These handlers are ESSENTIAL for frontend shortcode search to work:
+        //   - wp_ajax_nopriv_geekbench_scraper_fetch: For non-logged-in users
+        //   - wp_ajax_geekbench_scraper_fetch: For logged-in users
+        //
+        // IMPORTANT: The Admin class does NOT register these handlers (see Admin.php)
+        // to prevent conflicts. The Shortcode class is the ONLY place where
+        // geekbench_scraper_fetch is registered.
+        //
+        // TESTING: After any changes, test:
+        //   1. Frontend search while logged OUT
+        //   2. Frontend search while logged IN
+        //   3. Admin interface search (should still work)
+        // ============================================================================
+
         // Register AJAX handlers for frontend
         error_log('[Shortcode] Registering AJAX handlers...');
         file_put_contents($log_file, date('[Y-m-d H:i:s] ') . "[Shortcode] Registering AJAX handlers...\n", FILE_APPEND);

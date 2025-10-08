@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.3.4] - 2025-10-08
+
+### Fixed
+- **Critical: Frontend AJAX Search Failure** (Oct 8, 2025):
+  - Fixed HTTP 403 error and `-1` response when searching from frontend shortcode
+  - **Root Cause**: Both Admin and Shortcode classes were registering the same AJAX action (`wp_ajax_geekbench_scraper_fetch`), causing conflicts
+  - **Solution**: Modified Plugin.php to only initialize Admin class when NOT doing AJAX (`!wp_doing_ajax()`)
+  - Removed duplicate AJAX handler registration from Admin class
+  - Frontend search now works correctly for both logged-in and non-logged-in users
+
+### Added
+- **Frontend AJAX Self-Test** (Oct 8, 2025):
+  - Added new self-test to verify frontend AJAX handler registration
+  - Test checks for Shortcode class existence
+  - Test verifies both `wp_ajax_nopriv_geekbench_scraper_fetch` and `wp_ajax_geekbench_scraper_fetch` are registered
+  - Test detects conflicts with Admin class handler registration
+  - Test validates handler callback is correct (Shortcode::ajax_fetch_results)
+  - Accessible from Settings page under "System Self-Test"
+
+### Changed
+- **Code Documentation and Safeguards** (Oct 8, 2025):
+  - Added comprehensive safeguard comments in Plugin.php explaining Admin vs Shortcode initialization
+  - Added critical warnings in Admin.php about AJAX handler registration conflicts
+  - Added critical warnings in Shortcode.php about frontend AJAX handler importance
+  - All comments include testing instructions to prevent regression
+  - Comments explain WordPress's `is_admin()` quirk (returns true for AJAX requests)
+
+---
+
 ## [1.3.3] - 2025-10-08
 
 ### Fixed

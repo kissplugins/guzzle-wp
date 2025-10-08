@@ -450,6 +450,11 @@ jQuery(document).ready(function($) {
                 test: testHTMLParser
             },
             {
+                name: 'Frontend AJAX Test',
+                description: 'Test frontend shortcode AJAX handler registration',
+                test: testFrontendAJAX
+            },
+            {
                 name: 'Table Sorting Test',
                 description: 'Test table sorting functionality (ascending/descending)',
                 test: testTableSorting
@@ -714,6 +719,75 @@ jQuery(document).ready(function($) {
                     callback(true, response.data.message, response.data.details);
                 } else {
                     callback(false, response.data.message, response.data.details);
+                }
+            },
+            error: function() {
+                callback(false, 'AJAX request failed', 'Could not communicate with server');
+            }
+        });
+    }
+
+    /**
+     * Test Frontend AJAX Handler
+     *
+     * ⚠️ CRITICAL TEST - DO NOT REMOVE ⚠️
+     *
+     * This test verifies that the frontend shortcode AJAX handler is properly registered.
+     * If this test fails, frontend search will not work (returns -1 or 403 error).
+     *
+     * This test checks:
+     * - Shortcode class exists
+     * - wp_ajax_nopriv_geekbench_scraper_fetch is registered (for non-logged-in users)
+     * - wp_ajax_geekbench_scraper_fetch is registered (for logged-in users)
+     * - No conflicts with Admin class handler
+     *
+     * @since 1.3.4
+     */
+    function testFrontendAJAX(callback) {
+        $.ajax({
+            url: ajaxurl,
+            method: 'POST',
+            data: {
+                action: 'geekbench_self_test',
+                test: 'frontend_ajax',
+                nonce: '<?php echo wp_create_nonce('geekbench_self_test'); ?>'
+            },
+            success: function(response) {
+                if (response.success) {
+                    // Build details from test results
+                    let details = '<strong>Frontend AJAX validation:</strong><ul>';
+                    if (response.data.details) {
+                        response.data.details.forEach(function(detail) {
+                            if (detail.includes('✅')) {
+                                details += `<li style="color: #28a745;">${detail}</li>`;
+                            } else if (detail.includes('⚠️')) {
+                                details += `<li style="color: #ffc107;">${detail}</li>`;
+                            } else {
+                                details += `<li>${detail}</li>`;
+                            }
+                        });
+                    }
+                    details += '</ul>';
+                    details += '<p><em>Note: This ensures frontend shortcode search works for both logged-in and non-logged-in users.</em></p>';
+
+                    callback(true, response.data.message, details);
+                } else {
+                    let details = '<strong>Frontend AJAX validation failed:</strong><ul>';
+                    if (response.data.details) {
+                        response.data.details.forEach(function(detail) {
+                            if (detail.includes('❌')) {
+                                details += `<li style="color: #dc3545; font-weight: bold;">${detail}</li>`;
+                            } else if (detail.includes('⚠️')) {
+                                details += `<li style="color: #ffc107;">${detail}</li>`;
+                            } else {
+                                details += `<li>${detail}</li>`;
+                            }
+                        });
+                    }
+                    details += '</ul>';
+                    details += '<p style="color: #dc3545; font-weight: bold;">⚠️ ACTION REQUIRED: Frontend search will NOT work! Check src/Plugin.php and src/Shortcode.php</p>';
+
+                    callback(false, response.data.message, details);
                 }
             },
             error: function() {

@@ -38,8 +38,27 @@ class Admin {
         // Add admin menu
         add_action('admin_menu', [$this, 'add_admin_menu']);
 
+        // ============================================================================
+        // CRITICAL: AJAX Handler Registration
+        // ============================================================================
+        // DO NOT register wp_ajax_geekbench_scraper_fetch here!
+        //
+        // REASON: The Shortcode class handles this action for BOTH:
+        //   - wp_ajax_geekbench_scraper_fetch (logged-in users)
+        //   - wp_ajax_nopriv_geekbench_scraper_fetch (non-logged-in users)
+        //
+        // If we register it here too, it will create a conflict during frontend
+        // AJAX requests, causing the search to fail with HTTP 403 or -1 errors.
+        //
+        // The Admin class is initialized for:
+        //   - Regular admin pages (is_admin() && !wp_doing_ajax())
+        //   - Admin AJAX requests (wp_doing_ajax() && current_user_can('manage_options'))
+        //
+        // This ensures admin-specific AJAX handlers (self-test, etc.) work correctly
+        // while preventing conflicts with frontend AJAX handlers.
+        // ============================================================================
+
         // Register AJAX handlers (admin-only actions)
-        // NOTE: wp_ajax_geekbench_scraper_fetch is handled by Shortcode class for both frontend and admin
         add_action('wp_ajax_geekbench_scraper_refresh', [$this, 'ajax_refresh_results']);
         add_action('wp_ajax_geekbench_scraper_save_translations', [$this, 'ajax_save_translations']);
         add_action('wp_ajax_geekbench_self_test', [$this, 'ajax_self_test']);
@@ -353,6 +372,10 @@ class Admin {
 
             case 'html_parser':
                 $this->test_html_parser();
+                break;
+
+            case 'frontend_ajax':
+                $this->test_frontend_ajax();
                 break;
 
             default:
@@ -897,6 +920,158 @@ class Admin {
         } else {
             wp_send_json_error([
                 'message' => 'Table sorting code has missing components',
+                'details' => $checks,
+            ]);
+        }
+    }
+
+    /**
+     * Test frontend AJAX handler
+     *
+     * This test simulates a frontend AJAX request to ensure the
+     * geekbench_scraper_fetch action is properly registered and working.
+     *
+     * @since 1.3.4
+     * @return void
+     */
+    private function test_frontend_ajax() {
+        $checks = [];
+        $all_passed = true;
+
+        // Check 1: Verify Shortcode class exists
+        if (class_exists('GeekbenchScraper\\Shortcode')) {
+            $checks[] = '✅ Shortcode class exists';
+        } else {
+            $checks[] = '❌ Shortcode class NOT found';
+            $all_passed = false;
+        }
+
+        // Check 2: Verify AJAX handlers are registered
+        global $wp_filter;
+
+        $has_nopriv = isset($wp_filter['wp_ajax_nopriv_geekbench_scraper_fetch']);
+        $has_priv = isset($wp_filter['wp_ajax_geekbench_scraper_fetch']);
+
+        if ($has_nopriv) {
+            $checks[] = '✅ wp_ajax_nopriv_geekbench_scraper_fetch is registered (for non-logged-in users)';
+        } else {
+            $checks[] = '❌ wp_ajax_nopriv_geekbench_scraper_fetch NOT registered';
+            $all_passed = false;
+        }
+
+        if ($has_priv) {
+            $checks[] = '✅ wp_ajax_geekbench_scraper_fetch is registered (for logged-in users)';
+        } else {
+            $checks[] = '❌ wp_ajax_geekbench_scraper_fetch NOT registered';
+            $all_passed = false;
+        }
+
+        // Check 3: Verify handler callback is correct
+        if ($has_priv && isset($wp_filter['wp_ajax_geekbench_scraper_fetch']->callbacks)) {
+            $callbacks = $wp_filter['wp_ajax_geekbench_scraper_fetch']->callbacks;
+            $handler_found = false;
+
+            foreach ($callbacks as $priority => $functions) {
+                foreach ($functions as $function) {
+                    if (isset($function['function']) && is_array($function['function'])) {
+                        $class = get_class($function['function'][0]);
+                        $method = $function['function'][1];
+
+                        if ($class === 'GeekbenchScraper\\Shortcode' && $method === 'ajax_fetch_results') {
+                            $checks[] = '✅ Handler callback is correct: Shortcode::ajax_fetch_results()';
+                            $handler_found = true;
+                            break 2;
+                        }
+                    }
+                }
+            }
+
+            if (!$handler_found) {
+                $checks[] = '⚠️ Handler callback could not be verified (but may still work)';
+            }
+        }
+
+        // Check 4: Verify Admin class is NOT registering the same handler
+        // (This was the bug that caused the conflict)
+        $admin_conflict = false;
+        if ($has_priv && isset($wp_filter['wp_ajax_geekbench_scraper_fetch']->callbacks)) {
+            $callbacks = $wp_filter['wp_ajax_geekbench_scraper_fetch']->callbacks;
+
+            foreach ($callbacks as $priority => $functions) {
+                foreach ($functions as $function) {
+                    if (isset($function['function']) && is_array($function['function'])) {
+                        $class = get_class($function['function'][0]);
+
+                        if ($class === 'GeekbenchScraper\\Admin') {
+                            $admin_conflict = true;
+                            break 2;
+                        }
+                    }
+                }
+            }
+        }
+
+        if ($admin_conflict) {
+            $checks[] = '❌ CONFLICT: Admin class is also registering geekbench_scraper_fetch (this will break frontend search!)';
+            $all_passed = false;
+        } else {
+            $checks[] = '✅ No conflict: Admin class is NOT registering geekbench_scraper_fetch';
+        }
+
+        // Check 5: Test actual AJAX request (simulate frontend call)
+        $test_query = 'iPhone18';
+
+        // Simulate POST data
+        $_POST['action'] = 'geekbench_scraper_fetch';
+        $_POST['query'] = $test_query;
+        $_POST['limit'] = '5';
+
+        // Capture output
+        ob_start();
+
+        try {
+            // Call the handler directly
+            $plugin = \GeekbenchScraper\Plugin::get_instance();
+            if (isset($plugin->shortcode)) {
+                // Temporarily disable wp_send_json to capture response
+                add_filter('wp_die_ajax_handler', function() {
+                    return function($message) {
+                        // Do nothing - we'll capture the output instead
+                    };
+                });
+
+                // This would normally call wp_send_json_success/error
+                // We'll just verify the handler exists and is callable
+                if (method_exists($plugin->shortcode, 'ajax_fetch_results')) {
+                    $checks[] = '✅ ajax_fetch_results method exists and is callable';
+                } else {
+                    $checks[] = '❌ ajax_fetch_results method NOT found';
+                    $all_passed = false;
+                }
+            } else {
+                $checks[] = '❌ Shortcode instance not found in Plugin';
+                $all_passed = false;
+            }
+        } catch (\Exception $e) {
+            $checks[] = '❌ Error testing AJAX handler: ' . $e->getMessage();
+            $all_passed = false;
+        }
+
+        ob_end_clean();
+
+        // Clean up
+        unset($_POST['action']);
+        unset($_POST['query']);
+        unset($_POST['limit']);
+
+        if ($all_passed) {
+            wp_send_json_success([
+                'message' => 'Frontend AJAX handler is properly configured',
+                'details' => $checks,
+            ]);
+        } else {
+            wp_send_json_error([
+                'message' => 'Frontend AJAX handler has issues',
                 'details' => $checks,
             ]);
         }

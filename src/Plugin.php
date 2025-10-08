@@ -84,14 +84,53 @@ class Plugin {
         $this->scraper = new Scraper();
         file_put_contents($log_file, date('[Y-m-d H:i:s] ') . "[Plugin] Scraper initialized\n", FILE_APPEND);
 
-        // Initialize admin interface (only in admin, not during AJAX)
-        // Note: is_admin() returns true for AJAX requests, so we need to exclude those
-        if (is_admin() && !wp_doing_ajax()) {
+        // ============================================================================
+        // CRITICAL: Admin vs Shortcode Initialization Order
+        // ============================================================================
+        // DO NOT REFACTOR THIS SECTION WITHOUT UNDERSTANDING THE FOLLOWING:
+        //
+        // 1. The Admin class registers admin-specific AJAX handlers:
+        //    - wp_ajax_geekbench_scraper_refresh
+        //    - wp_ajax_geekbench_scraper_save_translations
+        //    - wp_ajax_geekbench_self_test
+        //    - wp_ajax_geekbench_test_table_sorting
+        //
+        // 2. The Shortcode class registers frontend AJAX handlers:
+        //    - wp_ajax_geekbench_scraper_fetch (logged-in users)
+        //    - wp_ajax_nopriv_geekbench_scraper_fetch (non-logged-in users)
+        //
+        // 3. WordPress's is_admin() returns TRUE for ALL AJAX requests, even from frontend!
+        //
+        // 4. SOLUTION: Initialize Admin class for:
+        //    - Regular admin pages (is_admin() && !wp_doing_ajax())
+        //    - Admin AJAX requests (wp_doing_ajax() && current_user_can('manage_options'))
+        //
+        //    This ensures:
+        //    - Admin AJAX handlers (self-test, etc.) work correctly
+        //    - Frontend AJAX requests don't conflict with admin handlers
+        //
+        // 5. The Shortcode class MUST be initialized for both frontend AND admin to handle
+        //    frontend AJAX requests (logged-in and non-logged-in users).
+        //
+        // TESTING: If you modify this, test ALL:
+        //   - Admin interface search (requires login)
+        //   - Frontend shortcode search (works without login)
+        //   - Admin self-test (Settings page)
+        // ============================================================================
+
+        // Initialize admin interface
+        // - For regular admin pages: is_admin() && !wp_doing_ajax()
+        // - For admin AJAX requests: wp_doing_ajax() && current_user_can('manage_options')
+        $is_admin_page = is_admin() && !wp_doing_ajax();
+        $is_admin_ajax = wp_doing_ajax() && is_user_logged_in() && current_user_can('manage_options');
+
+        if ($is_admin_page || $is_admin_ajax) {
             $this->admin = new Admin($this->scraper);
-            file_put_contents($log_file, date('[Y-m-d H:i:s] ') . "[Plugin] Admin initialized\n", FILE_APPEND);
+            file_put_contents($log_file, date('[Y-m-d H:i:s] ') . "[Plugin] Admin initialized (admin_page: " . ($is_admin_page ? 'YES' : 'NO') . ", admin_ajax: " . ($is_admin_ajax ? 'YES' : 'NO') . ")\n", FILE_APPEND);
         }
 
         // Initialize shortcode (frontend and admin)
+        // CRITICAL: This MUST be initialized even during AJAX to handle frontend searches
         file_put_contents($log_file, date('[Y-m-d H:i:s] ') . "[Plugin] About to initialize Shortcode\n", FILE_APPEND);
         $this->shortcode = new Shortcode($this->scraper);
         file_put_contents($log_file, date('[Y-m-d H:i:s] ') . "[Plugin] Shortcode initialized\n", FILE_APPEND);
