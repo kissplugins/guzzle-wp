@@ -1032,17 +1032,12 @@ class Admin {
         try {
             // Call the handler directly
             $plugin = \GeekbenchScraper\Plugin::get_instance();
-            if (isset($plugin->shortcode)) {
-                // Temporarily disable wp_send_json to capture response
-                add_filter('wp_die_ajax_handler', function() {
-                    return function($message) {
-                        // Do nothing - we'll capture the output instead
-                    };
-                });
+            $shortcode = $plugin->get_shortcode();
 
+            if ($shortcode !== null) {
                 // This would normally call wp_send_json_success/error
                 // We'll just verify the handler exists and is callable
-                if (method_exists($plugin->shortcode, 'ajax_fetch_results')) {
+                if (method_exists($shortcode, 'ajax_fetch_results')) {
                     $checks[] = '✅ ajax_fetch_results method exists and is callable';
                 } else {
                     $checks[] = '❌ ajax_fetch_results method NOT found';

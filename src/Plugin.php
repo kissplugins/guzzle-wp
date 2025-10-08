@@ -68,7 +68,7 @@ class Plugin {
     private function __construct() {
         // Singleton - use get_instance()
     }
-    
+
     /**
      * Initialize the plugin
      *
