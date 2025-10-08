@@ -124,18 +124,40 @@ class Shortcode {
             ]);
         }
 
-        // Verify reCAPTCHA if enabled and token provided
-        if (get_option('geekbench_recaptcha_enabled', 0)) {
+        // Server-side throttling check
+        $throttle_check = $this->check_throttle_limit();
+
+        if ($throttle_check['requires_captcha']) {
+            // reCAPTCHA is required after 5 searches
+            if (!get_option('geekbench_recaptcha_enabled', 0)) {
+                // reCAPTCHA not enabled but limit reached
+                wp_send_json_error([
+                    'message' => __('Search limit reached. Please enable reCAPTCHA in settings to continue.', 'geekbench-scraper'),
+                ]);
+            }
+
             $recaptcha_response = isset($_POST['g-recaptcha-response']) ? $_POST['g-recaptcha-response'] : '';
 
-            // Only verify if token is provided (smart throttling allows some searches without CAPTCHA)
-            if (!empty($recaptcha_response)) {
-                if (!$this->verify_recaptcha($recaptcha_response)) {
-                    wp_send_json_error([
-                        'message' => __('reCAPTCHA verification failed. Please try again.', 'geekbench-scraper'),
-                    ]);
-                }
+            if (empty($recaptcha_response)) {
+                wp_send_json_error([
+                    'message' => __('Please complete the reCAPTCHA verification to continue searching.', 'geekbench-scraper'),
+                    'requires_captcha' => true,
+                ]);
             }
+
+            // Verify reCAPTCHA
+            if (!$this->verify_recaptcha($recaptcha_response)) {
+                wp_send_json_error([
+                    'message' => __('reCAPTCHA verification failed. Please try again.', 'geekbench-scraper'),
+                    'requires_captcha' => true,
+                ]);
+            }
+
+            // reCAPTCHA verified - reset counter for this IP
+            $this->reset_throttle_count();
+        } else {
+            // Increment search count for this IP
+            $this->increment_throttle_count();
         }
 
         // Limit max results
@@ -202,6 +224,107 @@ class Shortcode {
         $result = json_decode($body, true);
 
         return isset($result['success']) && $result['success'] === true;
+    }
+
+    /**
+     * Get user's IP address
+     *
+     * @since 1.3.0
+     * @return string IP address
+     */
+    private function get_user_ip() {
+        // Check for proxy headers first
+        $ip_keys = [
+            'HTTP_CF_CONNECTING_IP', // Cloudflare
+            'HTTP_X_FORWARDED_FOR',  // Proxy
+            'HTTP_X_REAL_IP',        // Nginx proxy
+            'REMOTE_ADDR',           // Direct connection
+        ];
+
+        foreach ($ip_keys as $key) {
+            if (isset($_SERVER[$key]) && !empty($_SERVER[$key])) {
+                $ip = $_SERVER[$key];
+
+                // Handle comma-separated IPs (X-Forwarded-For can have multiple)
+                if (strpos($ip, ',') !== false) {
+                    $ip_list = explode(',', $ip);
+                    $ip = trim($ip_list[0]);
+                }
+
+                // Validate IP
+                if (filter_var($ip, FILTER_VALIDATE_IP)) {
+                    return $ip;
+                }
+            }
+        }
+
+        return '0.0.0.0'; // Fallback
+    }
+
+    /**
+     * Get transient key for IP-based throttling
+     *
+     * @since 1.3.0
+     * @return string Transient key
+     */
+    private function get_throttle_transient_key() {
+        $ip = $this->get_user_ip();
+        return 'geekbench_throttle_' . md5($ip);
+    }
+
+    /**
+     * Check if user has reached throttle limit
+     *
+     * @since 1.3.0
+     * @return array Array with 'count' and 'requires_captcha' keys
+     */
+    private function check_throttle_limit() {
+        $transient_key = $this->get_throttle_transient_key();
+        $search_count = get_transient($transient_key);
+
+        // Default to 0 if no transient exists
+        if ($search_count === false) {
+            $search_count = 0;
+        }
+
+        // Maximum searches before requiring CAPTCHA
+        $max_searches = 5;
+
+        return [
+            'count' => intval($search_count),
+            'requires_captcha' => intval($search_count) >= $max_searches,
+        ];
+    }
+
+    /**
+     * Increment throttle count for current IP
+     *
+     * @since 1.3.0
+     * @return void
+     */
+    private function increment_throttle_count() {
+        $transient_key = $this->get_throttle_transient_key();
+        $search_count = get_transient($transient_key);
+
+        if ($search_count === false) {
+            $search_count = 0;
+        }
+
+        $search_count++;
+
+        // Store for 5 minutes (300 seconds)
+        set_transient($transient_key, $search_count, 5 * MINUTE_IN_SECONDS);
+    }
+
+    /**
+     * Reset throttle count for current IP
+     *
+     * @since 1.3.0
+     * @return void
+     */
+    private function reset_throttle_count() {
+        $transient_key = $this->get_throttle_transient_key();
+        delete_transient($transient_key);
     }
 }
 

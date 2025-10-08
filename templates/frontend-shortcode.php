@@ -411,7 +411,8 @@ $recaptcha_site_key = get_option('geekbench_recaptcha_site_key', '');
     const errorMessage = instance.querySelector('.error-message');
     const recaptchaEnabled = <?php echo $recaptcha_enabled ? 'true' : 'false'; ?>;
 
-    // Smart throttling: Track search count
+    // Smart throttling: Track search count (client-side hint)
+    // Note: Server-side validation is the final authority
     let searchCount = 0;
     let lastSearchTime = Date.now();
     const THROTTLE_WINDOW = 5 * 60 * 1000; // 5 minutes
@@ -424,7 +425,8 @@ $recaptcha_site_key = get_option('geekbench_recaptcha_site_key', '');
         }
     }
 
-    // Check if CAPTCHA is required
+    // Check if CAPTCHA is required (client-side hint)
+    // Server will enforce this regardless of client-side state
     function isCaptchaRequired() {
         if (!recaptchaEnabled) return false;
         checkThrottleReset();
@@ -603,6 +605,16 @@ $recaptcha_site_key = get_option('geekbench_recaptcha_site_key', '');
                 // Show error
                 const errorMsg = data.data?.message || '<?php esc_html_e('An error occurred', 'geekbench-scraper'); ?>';
                 showError(errorMsg);
+
+                // If server requires CAPTCHA, show the widget
+                if (data.data?.requires_captcha && recaptchaEnabled) {
+                    const recaptchaContainer = instance.querySelector('.g-recaptcha');
+                    if (recaptchaContainer) {
+                        recaptchaContainer.style.display = 'block';
+                        // Scroll to CAPTCHA
+                        recaptchaContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                }
             }
         })
         .catch(error => {

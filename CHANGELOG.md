@@ -5,6 +5,39 @@ All notable changes to the Geekbench Browser Scraper WordPress plugin will be do
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2025-10-08
+
+### Added
+- **Server-Side Throttling** (Oct 8, 2025):
+  - IP-based request tracking using WordPress transients
+  - Hard 5-search limit enforced on the backend
+  - Cannot be bypassed by JavaScript manipulation
+  - Automatic counter reset after 5 minutes (transient expiration)
+  - Automatic counter reset after successful reCAPTCHA verification
+  - Proxy-aware IP detection (Cloudflare, X-Forwarded-For, Nginx, etc.)
+  - Handles comma-separated IPs from proxy headers
+  - IP validation using `filter_var()`
+  - Transient key format: `geekbench_throttle_{md5(ip)}`
+  - No database bloat (automatic cleanup)
+  - GDPR-compliant (hashed IPs, 5-minute retention)
+  - Comprehensive documentation in `docs/SERVER-SIDE-THROTTLING.md`
+
+### Changed
+- **Frontend JavaScript** (Oct 8, 2025):
+  - Client-side throttling now serves as UI hint only
+  - Server-side validation is the final authority
+  - Added server response handling for `requires_captcha` flag
+  - Automatically shows CAPTCHA widget when server requires it
+  - Improved error messages for throttle limit reached
+
+### Security
+- **Bypass Prevention** (Oct 8, 2025):
+  - Server validates every search request
+  - Client-side manipulation cannot circumvent limits
+  - Rate limiting per IP address
+  - Prevents automated scraping and bot abuse
+  - Protects server resources from excessive requests
+
 ## [1.2.0] - 2025-10-06
 
 ### Added
