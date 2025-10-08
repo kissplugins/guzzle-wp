@@ -4,7 +4,7 @@
  * Plugin URI: https://github.com/kissplugins/guzzle-wp
  * Description: Example/demo plugin showcasing Guzzle HTTP Client and Symfony DomCrawler in WordPress. Uses Geekbench scraping as a practical demonstration.
  * Version: 1.3.2
- * Author: Guzzle WP Contributors
+ * Author: Guzzle WP Contributors Inc. Guzzle, DomCrawler, and KISS Plugins
  * Author URI: https://github.com/kissplugins/guzzle-wp
  * License: MIT
  * License URI: https://opensource.org/licenses/MIT
