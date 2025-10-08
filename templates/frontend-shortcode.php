@@ -47,6 +47,12 @@ $recaptcha_site_key = get_option('geekbench_recaptcha_site_key', '');
                     placeholder="<?php echo esc_attr($hint_text); ?>"
                     autocomplete="off"
                 >
+                <button type="button" class="geekbench-clear-button" aria-label="<?php esc_attr_e('Clear search', 'geekbench-scraper'); ?>" style="display: none;">
+                    <svg class="clear-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
                 <button type="submit" class="geekbench-search-submit" aria-label="<?php esc_attr_e('Search', 'geekbench-scraper'); ?>">
                     <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="11" cy="11" r="8"></circle>
@@ -174,6 +180,28 @@ $recaptcha_site_key = get_option('geekbench_recaptcha_site_key', '');
 
 .geekbench-search-input::placeholder {
     color: #6a737d;
+}
+
+.geekbench-clear-button {
+    padding: 8px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    transition: background 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #666;
+}
+
+.geekbench-clear-button:hover {
+    background: #f0f0f0;
+    color: #333;
+}
+
+.clear-icon {
+    width: 16px;
+    height: 16px;
 }
 
 .geekbench-search-submit {
@@ -405,11 +433,67 @@ $recaptcha_site_key = get_option('geekbench_recaptcha_site_key', '');
 
     const searchForm = instance.querySelector('.geekbench-search-form');
     const searchInput = instance.querySelector('.geekbench-search-input');
+    const clearButton = instance.querySelector('.geekbench-clear-button');
     const resultsContainer = instance.querySelector('.geekbench-results');
     const loadingIndicator = instance.querySelector('.geekbench-loading');
     const errorContainer = instance.querySelector('.geekbench-error');
     const errorMessage = instance.querySelector('.error-message');
     const recaptchaEnabled = <?php echo $recaptcha_enabled ? 'true' : 'false'; ?>;
+
+    // ============================================================================
+    // URL Parameter Management
+    // ============================================================================
+
+    /**
+     * Get URL parameter value
+     */
+    function getUrlParameter(name) {
+        const urlParams = new URLSearchParams(window.location.search);
+        return urlParams.get(name);
+    }
+
+    /**
+     * Update URL parameter without page reload
+     */
+    function updateUrlParameter(name, value) {
+        const url = new URL(window.location);
+        if (value && value.trim() !== '') {
+            url.searchParams.set(name, value);
+        } else {
+            url.searchParams.delete(name);
+        }
+        window.history.pushState({}, '', url);
+    }
+
+    /**
+     * Toggle clear button visibility based on input value
+     */
+    function toggleClearButton() {
+        if (clearButton) {
+            clearButton.style.display = searchInput.value.trim() !== '' ? 'flex' : 'none';
+        }
+    }
+
+    // ============================================================================
+    // Clear Button Handler
+    // ============================================================================
+
+    if (clearButton) {
+        clearButton.addEventListener('click', function() {
+            searchInput.value = '';
+            toggleClearButton();
+            searchInput.focus();
+            // Clear URL parameter
+            updateUrlParameter('search', '');
+        });
+    }
+
+    // Show/hide clear button on input
+    if (searchInput) {
+        searchInput.addEventListener('input', toggleClearButton);
+        // Initialize clear button visibility
+        toggleClearButton();
+    }
 
     // Smart throttling: Track search count (client-side hint)
     // Note: Server-side validation is the final authority
@@ -438,13 +522,24 @@ $recaptcha_site_key = get_option('geekbench_recaptcha_site_key', '');
         // Calculate averages for any pre-loaded results
         calculateAverages();
 
+        // Check for URL parameter first
+        const urlQuery = getUrlParameter('search');
         const defaultQuery = instance.dataset.defaultQuery;
         const limit = instance.dataset.limit;
 
+        // Priority: URL parameter > default query
+        let queryToRun = urlQuery || defaultQuery;
+
+        // Update input field with URL query if present
+        if (urlQuery && searchInput) {
+            searchInput.value = urlQuery;
+            toggleClearButton();
+        }
+
         // Only auto-load if there's a valid query and no results are already displayed
-        if (defaultQuery && defaultQuery.trim() !== '' && !resultsContainer.querySelector('.results-header')) {
+        if (queryToRun && queryToRun.trim() !== '' && !resultsContainer.querySelector('.results-header')) {
             // First search doesn't require CAPTCHA
-            fetchResults(defaultQuery, limit, false, true);
+            fetchResults(queryToRun, limit, false, true);
         }
     });
 
@@ -469,6 +564,9 @@ $recaptcha_site_key = get_option('geekbench_recaptcha_site_key', '');
                     return;
                 }
             }
+
+            // Update URL parameter with search query
+            updateUrlParameter('search', query);
 
             fetchResults(query, limit);
         });

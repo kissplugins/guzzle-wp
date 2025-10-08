@@ -1,6 +1,6 @@
 - [x] Update documentation to position the Geekbench scraping as an example project
-- Add "x" to clear search field input field
-- Add current search as URL parameter in browser URL can send a direct link to a search
+- [x] Add "x" to clear search field input field
+- [x] Add current executed search as URL parameter in browser URL can send a direct link to a search to their friends
 - Move Guzzle into it's own Mac Geekbench Repo
 - Parse and move number of cores into it's own column
-
+- Save summarized results to own WP table including date and total number of machines as part of the summary table
