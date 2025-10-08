@@ -21,12 +21,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - **Table Sorting Self-Test** (Oct 8, 2025):
   - Added automated self-test in WP Admin → Tools → Geekbench Settings
-  - Tests if `initTableSort()` function exists
+  - Tests if `initTableSort()` function exists in template file
   - Verifies sortable headers and indicators are present
   - Validates data attributes on table rows
+  - Checks for critical section warnings
+  - Validates auto-initialization code
   - Prevents table sorting from being accidentally removed
   - Provides detailed test results and error messages
-  - Added `testTableSorting()` function for validation
+  - Uses AJAX to validate template file contents (works on settings page)
 
 ### Changed
 - **Code Safeguards** (Oct 8, 2025):
