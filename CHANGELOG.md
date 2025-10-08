@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.3.5] - 2025-10-08
+
+### Added
+- **Clear Search Button** (Oct 8, 2025):
+  - Added "X" clear button to search input field
+  - Button appears when input has text and disappears when empty
+  - Clicking the button clears the search field and focuses the input
+  - Automatically updates URL parameter when cleared
+  - Styled with hover effect for better UX
+
+- **URL Parameter Support for Search Sharing** (Oct 8, 2025):
+  - Search queries are now saved to URL as `?search=query` parameter
+  - Users can share direct links to specific searches with friends
+  - URL parameter takes priority over default query on page load
+  - Search input is automatically populated from URL parameter
+  - URL updates without page reload using HTML5 History API
+  - Clearing search also clears URL parameter
+
+### Changed
+- **Enhanced Search UX** (Oct 8, 2025):
+  - Search input now shows clear button for better user experience
+  - URL reflects current search state for easy sharing
+  - Page can be bookmarked with specific search queries
+
+---
+
 ## [1.3.4] - 2025-10-08
 
 ### Fixed
