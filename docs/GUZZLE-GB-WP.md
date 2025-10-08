@@ -69,21 +69,21 @@ Example URL: https://browser.geekbench.com/search?q=Iphone18
 
 ### High-Level Checklist
 
-- [ ] **Create WordPress plugin foundation**
+- [x] **Create WordPress plugin foundation**
   - Add main plugin file (`geekbench-scraper.php`) with proper header comments
   - Set up plugin activation/deactivation hooks
   - Create folder structure: `/src`, `/vendor`, `/assets`, `/templates`, `/tests`
   - Add `.gitignore` for `/vendor` and IDE files
   - Create `README.md` with installation and usage instructions
 
-- [ ] **Implement PSR-4 autoloader**
+- [x] **Implement PSR-4 autoloader**
   - Create `composer.json` with PSR-4 namespace mapping (e.g., `GeekbenchScraper\\`)
   - Add Guzzle and symfony/dom-crawler as Composer dependencies
   - Add PHPUnit as dev dependency (`require-dev`)
   - Run `composer install` to generate autoloader and vendor directory
   - Configure autoload-dev for test namespace
 
-- [ ] **Establish plugin namespace architecture**
+- [x] **Establish plugin namespace architecture**
   - Create base classes in `/src`: `Plugin.php`, `Scraper.php`, `Admin.php`, `Shortcode.php`
   - Set up namespace structure following PSR-4 (matching folder hierarchy)
   - Bootstrap autoloader in main plugin file and initialize plugin class
@@ -97,14 +97,14 @@ Example URL: https://browser.geekbench.com/search?q=Iphone18
 
 ### High-Level Checklist
 
-- [ ] **Build Guzzle HTTP client wrapper**
+- [x] **Build Guzzle HTTP client wrapper**
   - Create `Scraper.php` class with Guzzle HTTP client initialization
   - Configure User-Agent header to mimic browser requests
   - Add method to fetch Geekbench search URL with proper headers and error handling
   - Implement response validation (200 status code) and HTML content extraction
   - Add timeout settings (10-15 seconds recommended)
 
-- [ ] **Parse HTML with DomCrawler**
+- [x] **Parse HTML with DomCrawler**
   - Use Symfony DomCrawler to parse Geekbench search results HTML
   - Target parent selector: `div.col-12.list-col` (returns ~25 results per page)
   - Extract data fields per result:
@@ -117,13 +117,19 @@ Example URL: https://browser.geekbench.com/search?q=Iphone18
   - Structure parsed data into normalized array format (limit to 30 results max)
   - Handle edge cases: missing usernames, empty fields, malformed HTML
 
-- [ ] **Add data caching layer**
+- [x] **Add data caching layer**
   - Implement WordPress transient caching for scraped results (15-minute expiry)
   - Create cache key based on sanitized search query parameters
   - Add manual cache refresh functionality (bypass cache on demand)
   - Store both raw HTML and parsed data for debugging purposes
   - **NOTE**: Data is EPHEMERAL - no database storage, only temporary cache
   - Cache is cleared after expiry or manual refresh - no persistent storage of results
+
+- [x] **Add data sanitization post-processor**
+  - Implement `sanitize_results()` method to clean parsed data before caching
+  - Add `sanitize_upload_date()` to extract clean date format (removes usernames)
+  - Use regex pattern to extract "MMM DD, YYYY" format from raw date strings
+  - Integrated into fetch pipeline: parse → sanitize → cache → return
 
 ---
 
@@ -133,13 +139,13 @@ Example URL: https://browser.geekbench.com/search?q=Iphone18
 
 ### High-Level Checklist
 
-- [ ] **Build admin menu and page**
+- [x] **Build admin menu and page**
   - Register admin menu item under Tools or custom top-level menu
   - Create admin page template with search form for Geekbench queries
   - Add AJAX endpoint for fetching/refreshing scraper results
   - **Default search query**: "iPhone18" (iPhone 17 models with A19/ARM 4257 chip)
 
-- [ ] **Implement sortable results table**
+- [x] **Implement sortable results table**
   - Display results in HTML table with columns: System Name, Date, Platform, Single-Core, Multi-Core
   - Add JavaScript for client-side table sorting with ascending/descending toggle on ALL column headers
   - Implement visual indicators (↑/↓ arrows) to show current sort column and direction
@@ -147,11 +153,39 @@ Example URL: https://browser.geekbench.com/search?q=Iphone18
   - Style table with WordPress admin CSS classes for native look
   - Make System Name column clickable links to full Geekbench benchmark pages
 
-- [ ] **Add user controls and feedback**
+- [x] **Add user controls and feedback**
   - Create search input field with submit button to trigger new scrapes
   - Pre-populate search field with "iPhone18" as default value
   - Add "Refresh Results" button to bypass cache
   - Implement loading states, error messages, and success notifications
+
+- [x] **Add name translation feature**
+  - Implement custom name mapping for system names (e.g., "iPhone18,2" → "iPhone 17 Plus")
+  - Add settings page for managing name translations
+  - Display both translated and original names in results table
+  - Store translations in WordPress options table
+
+- [x] **Add average scores calculation**
+  - Dynamic bottom row (tfoot) showing average Single-Core and Multi-Core scores
+  - Automatically calculates from all visible results on current page
+  - Displays result count for context
+  - Updates in real-time when table is sorted
+  - Styled with blue highlight for visual distinction
+
+- [x] **Add system self-test suite**
+  - 8 critical diagnostic tests on Settings page
+  - Visual status indicator showing pass/fail count
+  - Tests: PHP version, Guzzle, DomCrawler, WordPress functions, cache, Geekbench connectivity
+  - **Test 7**: Scraper Logic - validates core scraping functionality with real Geekbench data
+  - **Test 8**: HTML Parser - validates DOM selectors extract all required fields correctly
+  - Real-time AJAX execution with progress indicators
+  - Detailed error messages for troubleshooting
+
+  - [ ] **Security considerations** (See SECURITY-REVIEW.md for details)
+  - [x] Sanitize all shortcode attributes - COMPLETE
+  - [ ] Use WordPress nonces for AJAX requests from frontend - PARTIAL (admin complete, frontend missing)
+  - [ ] Rate limiting to prevent abuse (max requests per IP/session) - NOT IMPLEMENTED
+  - [x] Cache results per unique query to reduce server load - COMPLETE (15-min TTL)
 
 ---
 
@@ -192,11 +226,6 @@ Example URL: https://browser.geekbench.com/search?q=Iphone18
   - AJAX loading without page refresh
   - Loading spinner/skeleton during data fetch
 
-- [ ] **Security considerations**
-  - Sanitize all shortcode attributes
-  - Use WordPress nonces for AJAX requests from frontend
-  - Rate limiting to prevent abuse (max requests per IP/session)
-  - Cache results per unique query to reduce server load
 
 ### Shortcode Usage Examples
 
@@ -810,3 +839,134 @@ guzzle-wp/
 - **PHPUnit test suite for critical modules**
 - **Test fixtures for regression prevention**
 - **Composer dependency management**
+- **Data sanitization post-processor for clean date extraction**
+- **Name translation feature for custom system name mapping**
+
+---
+
+## Geekbench Results Data Structure
+
+**Last Updated**: October 5, 2025
+
+This section documents the current HTML structure of Geekbench Browser search results pages. This information is critical for maintaining the scraper when Geekbench updates their website structure.
+
+### Live Example URL
+```
+https://browser.geekbench.com/search?q=iPhone18
+```
+
+### Result Data Structure (as returned by Scraper)
+
+Each result is an associative array with the following keys:
+
+```php
+[
+    'system_name'       => string,  // e.g., "iPhone18,2"
+    'benchmark_url'     => string,  // Full URL: "https://browser.geekbench.com/v6/cpu/14288820"
+    'processor_info'    => string,  // e.g., "ARM 4257 MHz (6 cores)"
+    'upload_date'       => string,  // Sanitized format: "Oct 06, 2025"
+    'platform'          => string,  // e.g., "iOS", "Android", "macOS", "Windows", "Linux"
+    'single_core_score' => int,     // e.g., 3831
+    'multi_core_score'  => int,     // e.g., 9910
+]
+```
+
+### HTML Structure Mapping (October 2025)
+
+**Parent Container**: `div.col-12.list-col`
+- Each search result is wrapped in this container
+- Typically 25 results per page
+
+**Inner Structure**: `div.list-col-inner > div.row`
+
+#### Field Extraction Details
+
+1. **System Name**
+   - **Selector**: `.col-12.col-lg-4 a[href^="/v6/cpu/"]`
+   - **Method**: `extract_system_name()`
+   - **Returns**: Link text (e.g., "iPhone18,2")
+   - **Notes**: First column in the row
+
+2. **Benchmark URL**
+   - **Selector**: `.col-12.col-lg-4 a[href^="/v6/cpu/"]`
+   - **Method**: `extract_attr($node, '.col-12.col-lg-4 a', 'href')`
+   - **Returns**: Relative path (e.g., "/v6/cpu/14288820")
+   - **Post-processing**: Prepended with base URL in `parse_html()`
+
+3. **Processor Info**
+   - **Selector**: `.col-12.col-lg-4 .list-col-model`
+   - **Method**: `extract_processor_info()`
+   - **Returns**: Multi-line text (e.g., "ARM\n4257 MHz\n(6 cores)")
+   - **Notes**: Contains processor type, frequency, and core count
+
+4. **Upload Date**
+   - **Selector**: `.col-6.col-md-3.col-lg-2` (with subtitle "Uploaded")
+   - **Method**: `extract_upload_date()`
+   - **Raw Format**: "Oct 06, 2025\nusername" (may include username link)
+   - **Sanitized Format**: "Oct 06, 2025" (username removed by `sanitize_upload_date()`)
+   - **Regex Pattern**: `/([A-Z][a-z]{2}\s+\d{1,2},\s+\d{4})/`
+   - **Notes**: Sanitization added to handle username text that appears after date
+
+5. **Platform**
+   - **Selector**: `.col-6.col-md-3.col-lg-2` (with subtitle "Platform")
+   - **Method**: `extract_platform()`
+   - **Returns**: Platform name (e.g., "iOS", "Android", "macOS", "Windows", "Linux")
+   - **Notes**: Used for platform badge styling
+
+6. **Single-Core Score**
+   - **Selector**: `.list-col-text-score` (first occurrence)
+   - **Method**: `extract_score($node, 0)`
+   - **Returns**: Integer score (e.g., 3831)
+   - **Notes**: Index 0 in score array
+
+7. **Multi-Core Score**
+   - **Selector**: `.list-col-text-score` (second occurrence)
+   - **Method**: `extract_score($node, 1)`
+   - **Returns**: Integer score (e.g., 9910)
+   - **Notes**: Index 1 in score array
+
+### Data Processing Pipeline
+
+```
+1. fetch_html($query)           → Raw HTML from Geekbench
+2. parse_html($html)            → Extract data using DomCrawler
+3. sanitize_results($results)   → Clean and normalize data
+   └─ sanitize_upload_date()    → Remove usernames from dates
+4. cache_results($query, $results) → Store in WordPress transients
+5. return $results              → Return to caller
+```
+
+### Critical Code Sections
+
+**⚠️ DO NOT REFACTOR WITHOUT TESTING**: The following methods contain critical parsing logic that is tightly coupled to Geekbench's HTML structure:
+
+- `parse_html()` - Main parsing loop
+- `extract_system_name()` - System name extraction
+- `extract_upload_date()` - Date extraction with newline handling
+- `extract_platform()` - Platform detection
+- `extract_score()` - Score extraction
+- `sanitize_upload_date()` - Date sanitization regex
+
+### Known Edge Cases
+
+1. **Missing Usernames**: Some results don't have username links after the date
+2. **Empty Fields**: Processor info or platform may be missing in rare cases
+3. **Malformed HTML**: Individual results may fail to parse (caught and logged)
+4. **Date Formats**: Dates always appear as "MMM DD, YYYY" (e.g., "Oct 06, 2025")
+5. **Platform Variations**: Platform names are case-sensitive ("iOS" not "ios")
+
+### Maintenance Notes
+
+- **HTML Structure Changes**: If Geekbench changes their HTML, update the selectors in extraction methods
+- **New Fields**: To add new fields, update `parse_html()` result array and add new extraction method
+- **Testing**: Always test with live Geekbench data after making changes
+- **Fixtures**: Update test fixtures in `/tests/fixtures/` when HTML structure changes
+- **Documentation**: Update this section when making structural changes to the scraper
+
+### Debugging Tips
+
+1. **Enable WP_DEBUG**: Set `define('WP_DEBUG', true);` in `wp-config.php`
+2. **Check Error Logs**: Failed parsing attempts are logged with `error_log()`
+3. **Inspect Raw HTML**: Use browser DevTools to verify current Geekbench structure
+4. **Test Fixtures**: Create HTML snapshots for regression testing
+5. **Cache Bypass**: Use "Refresh Results" button to bypass cache during testing

@@ -16,22 +16,71 @@
      */
     function initTableSort() {
         const tables = document.querySelectorAll('.geekbench-table');
-        
+
         tables.forEach(table => {
             const headers = table.querySelectorAll('th.sortable');
-            
+
             headers.forEach(header => {
                 header.addEventListener('click', function() {
                     sortTable(table, this);
                 });
             });
-            
+
+            // Calculate and display averages
+            calculateAverages(table);
+
             // Set default sort (date descending)
             const dateHeader = table.querySelector('th[data-sort="date"]');
             if (dateHeader) {
                 sortTable(table, dateHeader, 'desc');
             }
         });
+    }
+
+    /**
+     * Calculate and display average scores
+     *
+     * @param {HTMLTableElement} table Table element
+     */
+    function calculateAverages(table) {
+        const tbody = table.querySelector('tbody');
+        const rows = tbody.querySelectorAll('tr');
+
+        if (rows.length === 0) {
+            return;
+        }
+
+        let singleCoreSum = 0;
+        let multiCoreSum = 0;
+        let validRowCount = 0;
+
+        rows.forEach(row => {
+            const singleCore = parseFloat(row.getAttribute('data-single-core'));
+            const multiCore = parseFloat(row.getAttribute('data-multi-core'));
+
+            if (!isNaN(singleCore) && !isNaN(multiCore)) {
+                singleCoreSum += singleCore;
+                multiCoreSum += multiCore;
+                validRowCount++;
+            }
+        });
+
+        if (validRowCount > 0) {
+            const avgSingleCore = Math.round(singleCoreSum / validRowCount);
+            const avgMultiCore = Math.round(multiCoreSum / validRowCount);
+
+            // Update the average display
+            const avgSingleCoreEl = document.getElementById('avg-single-core');
+            const avgMultiCoreEl = document.getElementById('avg-multi-core');
+
+            if (avgSingleCoreEl) {
+                avgSingleCoreEl.textContent = avgSingleCore.toLocaleString();
+            }
+
+            if (avgMultiCoreEl) {
+                avgMultiCoreEl.textContent = avgMultiCore.toLocaleString();
+            }
+        }
     }
     
     /**
