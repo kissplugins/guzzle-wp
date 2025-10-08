@@ -153,6 +153,7 @@ $recaptcha_site_key = get_option('geekbench_recaptcha_site_key', '');
     align-items: center;
     background: #ffffff;
     border: 1px solid #ddd;
+    border-radius: 4px;
     overflow: hidden;
     transition: border-color 0.2s ease;
 }
@@ -432,6 +433,9 @@ $recaptcha_site_key = get_option('geekbench_recaptcha_site_key', '');
 
     // Auto-run default search on page load
     window.addEventListener('DOMContentLoaded', function() {
+        // Calculate averages for any pre-loaded results
+        calculateAverages();
+
         const defaultQuery = instance.dataset.defaultQuery;
         const limit = instance.dataset.limit;
         if (defaultQuery) {
@@ -498,6 +502,45 @@ $recaptcha_site_key = get_option('geekbench_recaptcha_site_key', '');
         }
     }
 
+    // Calculate and display average scores
+    function calculateAverages() {
+        const table = document.querySelector('#geekbench-results-table');
+        if (!table) return;
+
+        const rows = table.querySelectorAll('tbody tr');
+        if (rows.length === 0) return;
+
+        let singleCoreSum = 0;
+        let multiCoreSum = 0;
+        let count = 0;
+
+        rows.forEach(row => {
+            const singleCore = parseInt(row.getAttribute('data-single-core'));
+            const multiCore = parseInt(row.getAttribute('data-multi-core'));
+
+            if (!isNaN(singleCore) && !isNaN(multiCore)) {
+                singleCoreSum += singleCore;
+                multiCoreSum += multiCore;
+                count++;
+            }
+        });
+
+        if (count > 0) {
+            const avgSingleCore = Math.round(singleCoreSum / count);
+            const avgMultiCore = Math.round(multiCoreSum / count);
+
+            const avgSingleCoreEl = document.getElementById('avg-single-core');
+            const avgMultiCoreEl = document.getElementById('avg-multi-core');
+
+            if (avgSingleCoreEl) {
+                avgSingleCoreEl.textContent = avgSingleCore.toLocaleString();
+            }
+            if (avgMultiCoreEl) {
+                avgMultiCoreEl.textContent = avgMultiCore.toLocaleString();
+            }
+        }
+    }
+
     // Fetch results via AJAX
     function fetchResults(query, limit, refresh = false, isAutoLoad = false) {
         hideError();
@@ -553,6 +596,9 @@ $recaptcha_site_key = get_option('geekbench_recaptcha_site_key', '');
                 if (typeof initTableSort === 'function') {
                     initTableSort();
                 }
+
+                // Calculate and display averages
+                calculateAverages();
             } else {
                 // Show error
                 const errorMsg = data.data?.message || '<?php esc_html_e('An error occurred', 'geekbench-scraper'); ?>';
