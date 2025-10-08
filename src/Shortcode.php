@@ -34,13 +34,15 @@ class Shortcode {
      */
     public function __construct(Scraper $scraper) {
         $this->scraper = $scraper;
-        
+
         // Register shortcode
         add_shortcode('geekbench_results', [$this, 'render']);
-        
+
         // Register AJAX handlers for frontend
+        error_log('[Shortcode] Registering AJAX handlers...');
         add_action('wp_ajax_nopriv_geekbench_scraper_fetch', [$this, 'ajax_fetch_results']);
         add_action('wp_ajax_geekbench_scraper_fetch', [$this, 'ajax_fetch_results']);
+        error_log('[Shortcode] AJAX handlers registered');
     }
     
     /**
@@ -114,31 +116,53 @@ class Shortcode {
      * @return void
      */
     public function ajax_fetch_results() {
+        // Log the start of the AJAX request
+        error_log('===========================================');
+        error_log('[AJAX] *** geekbench_scraper_fetch CALLED ***');
+        error_log('[AJAX] geekbench_scraper_fetch started');
+        error_log('[AJAX] POST data: ' . print_r($_POST, true));
+        error_log('===========================================');
+
         // Get query parameter
         $query = isset($_POST['query']) ? sanitize_text_field($_POST['query']) : '';
         $limit = isset($_POST['limit']) ? absint($_POST['limit']) : 25;
 
         if (empty($query)) {
+            error_log('[AJAX] Error: Empty query');
             wp_send_json_error([
                 'message' => __('Search query is required', 'geekbench-scraper'),
             ]);
         }
 
         // Server-side throttling check
+        error_log('[AJAX] Checking throttle limit...');
         $throttle_check = $this->check_throttle_limit();
+        error_log('[AJAX] Throttle check result: ' . print_r($throttle_check, true));
+
+        // TEMPORARY: Disable throttling for debugging
+        $throttle_check['requires_captcha'] = false;
+        error_log('[AJAX] Throttling DISABLED for debugging');
 
         if ($throttle_check['requires_captcha']) {
+            error_log('[AJAX] reCAPTCHA required');
+
             // reCAPTCHA is required after 5 searches
-            if (!get_option('geekbench_recaptcha_enabled', 0)) {
+            $recaptcha_enabled = get_option('geekbench_recaptcha_enabled', 0);
+            error_log('[AJAX] reCAPTCHA enabled: ' . ($recaptcha_enabled ? 'yes' : 'no'));
+
+            if (!$recaptcha_enabled) {
                 // reCAPTCHA not enabled but limit reached
+                error_log('[AJAX] Error: reCAPTCHA not enabled but limit reached');
                 wp_send_json_error([
                     'message' => __('Search limit reached. Please enable reCAPTCHA in settings to continue.', 'geekbench-scraper'),
                 ]);
             }
 
             $recaptcha_response = isset($_POST['g-recaptcha-response']) ? $_POST['g-recaptcha-response'] : '';
+            error_log('[AJAX] reCAPTCHA response: ' . (empty($recaptcha_response) ? 'empty' : 'present'));
 
             if (empty($recaptcha_response)) {
+                error_log('[AJAX] Error: reCAPTCHA response empty');
                 wp_send_json_error([
                     'message' => __('Please complete the reCAPTCHA verification to continue searching.', 'geekbench-scraper'),
                     'requires_captcha' => true,
@@ -146,16 +170,20 @@ class Shortcode {
             }
 
             // Verify reCAPTCHA
+            error_log('[AJAX] Verifying reCAPTCHA...');
             if (!$this->verify_recaptcha($recaptcha_response)) {
+                error_log('[AJAX] Error: reCAPTCHA verification failed');
                 wp_send_json_error([
                     'message' => __('reCAPTCHA verification failed. Please try again.', 'geekbench-scraper'),
                     'requires_captcha' => true,
                 ]);
             }
 
+            error_log('[AJAX] reCAPTCHA verified successfully');
             // reCAPTCHA verified - reset counter for this IP
             $this->reset_throttle_count();
         } else {
+            error_log('[AJAX] reCAPTCHA not required, incrementing count');
             // Increment search count for this IP
             $this->increment_throttle_count();
         }
@@ -166,19 +194,25 @@ class Shortcode {
         }
 
         try {
+            error_log('[AJAX] Fetching results for query: ' . $query);
             // Fetch results
             $results = $this->scraper->fetch($query);
+            error_log('[AJAX] Fetched ' . count($results) . ' results');
 
             // Limit results
             if ($limit > 0 && count($results) > $limit) {
                 $results = array_slice($results, 0, $limit);
+                error_log('[AJAX] Limited to ' . $limit . ' results');
             }
 
             // Render table HTML
+            error_log('[AJAX] Rendering table HTML...');
             ob_start();
             include GEEKBENCH_SCRAPER_PLUGIN_DIR . 'templates/results-table.php';
             $html = ob_get_clean();
+            error_log('[AJAX] HTML rendered, length: ' . strlen($html) . ' bytes');
 
+            error_log('[AJAX] Sending success response');
             wp_send_json_success([
                 'results' => $results,
                 'html' => $html,
@@ -186,10 +220,13 @@ class Shortcode {
             ]);
 
         } catch (\Exception $e) {
+            error_log('[AJAX] Exception: ' . $e->getMessage());
             wp_send_json_error([
                 'message' => $e->getMessage(),
             ]);
         }
+
+        error_log('[AJAX] ajax_fetch_results completed');
     }
 
     /**

@@ -563,6 +563,14 @@ $recaptcha_site_key = get_option('geekbench_recaptcha_site_key', '');
         data.append('query', query);
         data.append('limit', limit);
 
+        // Debug: Log the request details
+        console.log('Making AJAX request to:', '<?php echo esc_url(admin_url('admin-ajax.php')); ?>');
+        console.log('Request data:', {
+            action: 'geekbench_scraper_fetch',
+            query: query,
+            limit: limit
+        });
+
         // Add reCAPTCHA token if required
         if (isCaptchaRequired() && typeof grecaptcha !== 'undefined') {
             const recaptchaResponse = grecaptcha.getResponse();
@@ -574,10 +582,35 @@ $recaptcha_site_key = get_option('geekbench_recaptcha_site_key', '');
         // AJAX request
         fetch('<?php echo esc_url(admin_url('admin-ajax.php')); ?>', {
             method: 'POST',
-            body: data
+            body: data,
+            credentials: 'same-origin',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
         })
-        .then(response => response.json())
+        .then(response => {
+            // Log response for debugging
+            console.log('AJAX Response Status:', response.status, response.statusText);
+            console.log('AJAX Response Headers:', {
+                'content-type': response.headers.get('content-type'),
+                'x-robots-tag': response.headers.get('x-robots-tag')
+            });
+
+            // Check if response is OK
+            if (!response.ok) {
+                // Try to get response text for debugging
+                return response.text().then(text => {
+                    console.error('Error Response Body:', text);
+                    throw new Error(`HTTP ${response.status}: ${response.statusText} - ${text.substring(0, 200)}`);
+                });
+            }
+
+            return response.json();
+        })
         .then(data => {
+            // Log parsed data for debugging
+            console.log('AJAX Response Data:', data);
+
             if (data.success) {
                 // Update results
                 if (resultsContainer && data.data.html) {
@@ -606,7 +639,16 @@ $recaptcha_site_key = get_option('geekbench_recaptcha_site_key', '');
             } else {
                 // Only show error if this is not an auto-load or if user initiated the search
                 if (!isAutoLoad) {
-                    const errorMsg = data.data?.message || '<?php esc_html_e('An error occurred', 'geekbench-scraper'); ?>';
+                    // Extract error message with better fallback handling
+                    let errorMsg = '<?php esc_html_e('An error occurred. Please try again.', 'geekbench-scraper'); ?>';
+
+                    if (data.data && data.data.message) {
+                        errorMsg = data.data.message;
+                    } else if (data.message) {
+                        errorMsg = data.message;
+                    }
+
+                    console.error('Search error:', errorMsg, data);
                     showError(errorMsg);
 
                     // If server requires CAPTCHA, show the widget
@@ -618,6 +660,9 @@ $recaptcha_site_key = get_option('geekbench_recaptcha_site_key', '');
                             recaptchaContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
                         }
                     }
+                } else {
+                    // Log auto-load errors silently
+                    console.log('Auto-load failed (silently):', data);
                 }
             }
         })

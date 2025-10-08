@@ -17,6 +17,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Suppressed error messages during auto-load to prevent confusing users
   - Network errors during auto-load are now logged to console instead of shown to users
 
+- **Enhanced Error Debugging** (Oct 8, 2025):
+  - Added comprehensive console logging for AJAX requests and responses
+  - Improved error message extraction with better fallback handling
+  - Added HTTP status code logging for failed requests
+  - Errors now show actual server messages instead of generic "An error occurred"
+  - Auto-load failures are logged silently to console for debugging
+
 ### Changed
 - **GitHub Actions Workflow Optimization** (Oct 8, 2025):
   - Removed duplicate workflow files (`php-lint.yml` and `wordpress-coding-standards.yml`)

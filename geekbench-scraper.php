@@ -52,11 +52,53 @@ add_action('admin_notices', __NAMESPACE__ . '\\show_composer_install_notices');
 function init_plugin() {
     // Get plugin instance
     $plugin = Plugin::get_instance();
-    
+
     // Initialize plugin
     $plugin->init();
 }
 add_action('plugins_loaded', __NAMESPACE__ . '\\init_plugin');
+
+/**
+ * Debug AJAX requests
+ *
+ * @since 1.3.4
+ * @return void
+ */
+function debug_ajax_request() {
+    if (defined('DOING_AJAX') && DOING_AJAX) {
+        error_log('[DEBUG] AJAX request detected');
+        error_log('[DEBUG] Action: ' . (isset($_POST['action']) ? $_POST['action'] : 'none'));
+        error_log('[DEBUG] Request URI: ' . $_SERVER['REQUEST_URI']);
+
+        // Check if our AJAX handlers are registered
+        global $wp_filter;
+        $action_name = isset($_POST['action']) ? $_POST['action'] : '';
+
+        if ($action_name === 'geekbench_scraper_fetch') {
+            error_log('[DEBUG] Checking for registered handlers...');
+            error_log('[DEBUG] wp_ajax_nopriv_geekbench_scraper_fetch: ' . (isset($wp_filter['wp_ajax_nopriv_geekbench_scraper_fetch']) ? 'YES' : 'NO'));
+            error_log('[DEBUG] wp_ajax_geekbench_scraper_fetch: ' . (isset($wp_filter['wp_ajax_geekbench_scraper_fetch']) ? 'YES' : 'NO'));
+
+            if (isset($wp_filter['wp_ajax_nopriv_geekbench_scraper_fetch'])) {
+                error_log('[DEBUG] Handlers for wp_ajax_nopriv_geekbench_scraper_fetch: ' . print_r($wp_filter['wp_ajax_nopriv_geekbench_scraper_fetch'], true));
+            }
+        }
+    }
+}
+add_action('init', __NAMESPACE__ . '\\debug_ajax_request', 1);
+
+/**
+ * Test AJAX handler
+ *
+ * @since 1.3.4
+ * @return void
+ */
+function test_ajax_handler() {
+    error_log('[TEST AJAX] test_ajax_simple CALLED!');
+    wp_send_json_success(['message' => 'Test AJAX works!']);
+}
+add_action('wp_ajax_nopriv_test_ajax_simple', __NAMESPACE__ . '\\test_ajax_handler');
+add_action('wp_ajax_test_ajax_simple', __NAMESPACE__ . '\\test_ajax_handler');
 
 /**
  * Plugin activation hook
