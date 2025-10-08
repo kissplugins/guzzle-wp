@@ -24,6 +24,10 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+// DEBUGGING: Test if this file is being loaded
+$test_log = WP_CONTENT_DIR . '/geekbench-test.log';
+file_put_contents($test_log, date('[Y-m-d H:i:s] ') . "Plugin file loaded!\n", FILE_APPEND);
+
 // Define plugin constants
 define('GEEKBENCH_SCRAPER_VERSION', '1.3.3');
 define('GEEKBENCH_SCRAPER_PLUGIN_FILE', __FILE__);
@@ -50,11 +54,17 @@ add_action('admin_notices', __NAMESPACE__ . '\\show_composer_install_notices');
  * @return void
  */
 function init_plugin() {
+    // Log to custom file
+    $log_file = WP_CONTENT_DIR . '/geekbench-init.log';
+    file_put_contents($log_file, date('[Y-m-d H:i:s] ') . "[Main] init_plugin() called\n", FILE_APPEND);
+
     // Get plugin instance
     $plugin = Plugin::get_instance();
+    file_put_contents($log_file, date('[Y-m-d H:i:s] ') . "[Main] Plugin instance retrieved\n", FILE_APPEND);
 
     // Initialize plugin
     $plugin->init();
+    file_put_contents($log_file, date('[Y-m-d H:i:s] ') . "[Main] Plugin initialized\n", FILE_APPEND);
 }
 add_action('plugins_loaded', __NAMESPACE__ . '\\init_plugin');
 

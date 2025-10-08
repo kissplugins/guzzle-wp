@@ -76,23 +76,34 @@ class Plugin {
      * @return void
      */
     public function init() {
+        // Log to custom file
+        $log_file = WP_CONTENT_DIR . '/geekbench-init.log';
+        file_put_contents($log_file, date('[Y-m-d H:i:s] ') . "[Plugin] init() called\n", FILE_APPEND);
+
         // Initialize scraper
         $this->scraper = new Scraper();
-        
-        // Initialize admin interface (only in admin)
-        if (is_admin()) {
+        file_put_contents($log_file, date('[Y-m-d H:i:s] ') . "[Plugin] Scraper initialized\n", FILE_APPEND);
+
+        // Initialize admin interface (only in admin, not during AJAX)
+        // Note: is_admin() returns true for AJAX requests, so we need to exclude those
+        if (is_admin() && !wp_doing_ajax()) {
             $this->admin = new Admin($this->scraper);
+            file_put_contents($log_file, date('[Y-m-d H:i:s] ') . "[Plugin] Admin initialized\n", FILE_APPEND);
         }
-        
+
         // Initialize shortcode (frontend and admin)
+        file_put_contents($log_file, date('[Y-m-d H:i:s] ') . "[Plugin] About to initialize Shortcode\n", FILE_APPEND);
         $this->shortcode = new Shortcode($this->scraper);
-        
+        file_put_contents($log_file, date('[Y-m-d H:i:s] ') . "[Plugin] Shortcode initialized\n", FILE_APPEND);
+
         // Load text domain for translations
         add_action('init', [$this, 'load_textdomain']);
-        
+
         // Enqueue assets
         add_action('wp_enqueue_scripts', [$this, 'enqueue_frontend_assets']);
         add_action('admin_enqueue_scripts', [$this, 'enqueue_admin_assets']);
+
+        file_put_contents($log_file, date('[Y-m-d H:i:s] ') . "[Plugin] init() completed\n", FILE_APPEND);
     }
     
     /**

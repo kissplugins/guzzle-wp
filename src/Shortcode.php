@@ -35,14 +35,29 @@ class Shortcode {
     public function __construct(Scraper $scraper) {
         $this->scraper = $scraper;
 
+        // Log to custom file
+        $log_file = WP_CONTENT_DIR . '/geekbench-init.log';
+        file_put_contents($log_file, date('[Y-m-d H:i:s] ') . "[Shortcode] Constructor called\n", FILE_APPEND);
+
         // Register shortcode
         add_shortcode('geekbench_results', [$this, 'render']);
+        file_put_contents($log_file, date('[Y-m-d H:i:s] ') . "[Shortcode] Shortcode registered\n", FILE_APPEND);
 
         // Register AJAX handlers for frontend
         error_log('[Shortcode] Registering AJAX handlers...');
+        file_put_contents($log_file, date('[Y-m-d H:i:s] ') . "[Shortcode] Registering AJAX handlers...\n", FILE_APPEND);
+
         add_action('wp_ajax_nopriv_geekbench_scraper_fetch', [$this, 'ajax_fetch_results']);
         add_action('wp_ajax_geekbench_scraper_fetch', [$this, 'ajax_fetch_results']);
+
         error_log('[Shortcode] AJAX handlers registered');
+        file_put_contents($log_file, date('[Y-m-d H:i:s] ') . "[Shortcode] AJAX handlers registered\n", FILE_APPEND);
+
+        // Verify handlers are registered
+        global $wp_filter;
+        $has_nopriv = isset($wp_filter['wp_ajax_nopriv_geekbench_scraper_fetch']);
+        $has_priv = isset($wp_filter['wp_ajax_geekbench_scraper_fetch']);
+        file_put_contents($log_file, date('[Y-m-d H:i:s] ') . "[Shortcode] Handler check - nopriv: " . ($has_nopriv ? 'YES' : 'NO') . ", priv: " . ($has_priv ? 'YES' : 'NO') . "\n", FILE_APPEND);
     }
     
     /**
@@ -117,6 +132,12 @@ class Shortcode {
      */
     public function ajax_fetch_results() {
         // Log the start of the AJAX request
+        $log_file = WP_CONTENT_DIR . '/geekbench-ajax.log';
+        file_put_contents($log_file, date('[Y-m-d H:i:s] ') . "===========================================\n", FILE_APPEND);
+        file_put_contents($log_file, date('[Y-m-d H:i:s] ') . "[AJAX] *** geekbench_scraper_fetch CALLED ***\n", FILE_APPEND);
+        file_put_contents($log_file, date('[Y-m-d H:i:s] ') . "[AJAX] POST data: " . print_r($_POST, true) . "\n", FILE_APPEND);
+        file_put_contents($log_file, date('[Y-m-d H:i:s] ') . "===========================================\n", FILE_APPEND);
+
         error_log('===========================================');
         error_log('[AJAX] *** geekbench_scraper_fetch CALLED ***');
         error_log('[AJAX] geekbench_scraper_fetch started');

@@ -37,9 +37,9 @@ class Admin {
         
         // Add admin menu
         add_action('admin_menu', [$this, 'add_admin_menu']);
-        
-        // Register AJAX handlers
-        add_action('wp_ajax_geekbench_scraper_fetch', [$this, 'ajax_fetch_results']);
+
+        // Register AJAX handlers (admin-only actions)
+        // NOTE: wp_ajax_geekbench_scraper_fetch is handled by Shortcode class for both frontend and admin
         add_action('wp_ajax_geekbench_scraper_refresh', [$this, 'ajax_refresh_results']);
         add_action('wp_ajax_geekbench_scraper_save_translations', [$this, 'ajax_save_translations']);
         add_action('wp_ajax_geekbench_self_test', [$this, 'ajax_self_test']);
