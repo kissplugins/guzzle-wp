@@ -137,10 +137,8 @@ $recaptcha_site_key = get_option('geekbench_recaptcha_site_key', '');
 
 /* Search Container */
 .geekbench-search-container {
-    background: #ffffff;
-    border-radius: 12px;
-    padding: 30px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    background: transparent;
+    padding: 0;
     margin-bottom: 30px;
 }
 
@@ -153,25 +151,22 @@ $recaptcha_site_key = get_option('geekbench_recaptcha_site_key', '');
     position: relative;
     display: flex;
     align-items: center;
-    background: #f8f9fa;
-    border: 2px solid #e1e4e8;
-    border-radius: 50px;
+    background: #ffffff;
+    border: 1px solid #ddd;
     overflow: hidden;
-    transition: all 0.3s ease;
+    transition: border-color 0.2s ease;
 }
 
 .search-input-wrapper:focus-within {
     border-color: #2271b1;
-    box-shadow: 0 0 0 3px rgba(34, 113, 177, 0.1);
-    background: #ffffff;
 }
 
 .geekbench-search-input {
     flex: 1;
-    padding: 18px 24px;
+    padding: 12px 16px;
     border: none;
     background: transparent;
-    font-size: 18px;
+    font-size: 16px;
     outline: none;
     color: #24292e;
 }
@@ -181,38 +176,35 @@ $recaptcha_site_key = get_option('geekbench_recaptcha_site_key', '');
 }
 
 .geekbench-search-submit {
-    padding: 12px 24px;
+    padding: 10px 16px;
     background: #2271b1;
     border: none;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: background 0.2s ease;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 0 50px 50px 0;
-    margin-right: 4px;
 }
 
 .geekbench-search-submit:hover {
     background: #135e96;
-    transform: scale(1.05);
 }
 
 .geekbench-search-submit:active {
-    transform: scale(0.98);
+    background: #0f4c75;
 }
 
 .search-icon {
-    width: 24px;
-    height: 24px;
+    width: 20px;
+    height: 20px;
     color: #ffffff;
 }
 
 /* Hint Text */
 .search-hint {
-    margin: 12px 0 0 24px;
-    font-size: 14px;
-    color: #6a737d;
+    margin: 8px 0 0 0;
+    font-size: 12px;
+    color: #666;
     font-weight: 400;
 }
 
