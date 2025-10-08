@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.3.3] - 2025-10-08
+
+### Fixed
+- **Frontend Error Message on Page Load** (Oct 8, 2025):
+  - Fixed red "An error occurred" message appearing briefly when users first visit the page
+  - Added validation to only auto-load results if there's a valid default query
+  - Added check to prevent auto-load if results are already pre-rendered on the page
+  - Suppressed error messages during auto-load to prevent confusing users
+  - Network errors during auto-load are now logged to console instead of shown to users
+
+### Changed
+- **GitHub Actions Workflow Optimization** (Oct 8, 2025):
+  - Removed duplicate workflow files (`php-lint.yml` and `wordpress-coding-standards.yml`)
+  - Consolidated all CI checks into single `ci.yml` workflow
+  - Tests now run once per push/PR instead of three times
+  - Reduced GitHub Actions minutes usage by 66%
+
+---
+
 ## [1.3.2] - 2025-10-08
 
 ### Changed

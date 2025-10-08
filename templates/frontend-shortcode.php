@@ -440,7 +440,9 @@ $recaptcha_site_key = get_option('geekbench_recaptcha_site_key', '');
 
         const defaultQuery = instance.dataset.defaultQuery;
         const limit = instance.dataset.limit;
-        if (defaultQuery) {
+
+        // Only auto-load if there's a valid query and no results are already displayed
+        if (defaultQuery && defaultQuery.trim() !== '' && !resultsContainer.querySelector('.results-header')) {
             // First search doesn't require CAPTCHA
             fetchResults(defaultQuery, limit, false, true);
         }
@@ -602,24 +604,29 @@ $recaptcha_site_key = get_option('geekbench_recaptcha_site_key', '');
                 // Calculate and display averages
                 calculateAverages();
             } else {
-                // Show error
-                const errorMsg = data.data?.message || '<?php esc_html_e('An error occurred', 'geekbench-scraper'); ?>';
-                showError(errorMsg);
+                // Only show error if this is not an auto-load or if user initiated the search
+                if (!isAutoLoad) {
+                    const errorMsg = data.data?.message || '<?php esc_html_e('An error occurred', 'geekbench-scraper'); ?>';
+                    showError(errorMsg);
 
-                // If server requires CAPTCHA, show the widget
-                if (data.data?.requires_captcha && recaptchaEnabled) {
-                    const recaptchaContainer = instance.querySelector('.g-recaptcha');
-                    if (recaptchaContainer) {
-                        recaptchaContainer.style.display = 'block';
-                        // Scroll to CAPTCHA
-                        recaptchaContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    // If server requires CAPTCHA, show the widget
+                    if (data.data?.requires_captcha && recaptchaEnabled) {
+                        const recaptchaContainer = instance.querySelector('.g-recaptcha');
+                        if (recaptchaContainer) {
+                            recaptchaContainer.style.display = 'block';
+                            // Scroll to CAPTCHA
+                            recaptchaContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
                     }
                 }
             }
         })
         .catch(error => {
             console.error('Fetch error:', error);
-            showError('<?php esc_html_e('Network error occurred. Please try again.', 'geekbench-scraper'); ?>');
+            // Only show network errors if this is not an auto-load
+            if (!isAutoLoad) {
+                showError('<?php esc_html_e('Network error occurred. Please try again.', 'geekbench-scraper'); ?>');
+            }
         })
         .finally(() => {
             // Hide loading
