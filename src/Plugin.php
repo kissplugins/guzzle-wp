@@ -119,7 +119,7 @@ class Plugin {
      */
     public function enqueue_frontend_assets() {
         global $post;
-        
+
         // Check if shortcode is present
         if (is_a($post, 'WP_Post') && has_shortcode($post->post_content, 'geekbench_results')) {
             // Enqueue frontend CSS
@@ -129,7 +129,7 @@ class Plugin {
                 [],
                 GEEKBENCH_SCRAPER_VERSION
             );
-            
+
             // Enqueue table sorting JavaScript
             wp_enqueue_script(
                 'geekbench-scraper-table-sort',
@@ -138,6 +138,20 @@ class Plugin {
                 GEEKBENCH_SCRAPER_VERSION,
                 true
             );
+
+            // Enqueue reCAPTCHA if enabled
+            if (get_option('geekbench_recaptcha_enabled', 0)) {
+                $site_key = get_option('geekbench_recaptcha_site_key', '');
+                if (!empty($site_key)) {
+                    wp_enqueue_script(
+                        'google-recaptcha',
+                        'https://www.google.com/recaptcha/api.js',
+                        [],
+                        null,
+                        true
+                    );
+                }
+            }
         }
     }
     

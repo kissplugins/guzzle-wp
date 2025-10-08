@@ -62,16 +62,130 @@ if (!defined('ABSPATH')) {
 
     <hr style="margin: 40px 0;">
 
+    <!-- Frontend Settings Section -->
+    <div class="geekbench-settings-section">
+        <h2><?php esc_html_e('Frontend Settings', 'geekbench-scraper'); ?></h2>
+        <p class="description">
+            <?php esc_html_e('Configure frontend shortcode appearance and behavior.', 'geekbench-scraper'); ?>
+        </p>
+
+        <form method="post" action="">
+            <?php wp_nonce_field('geekbench_frontend_settings_nonce'); ?>
+
+            <table class="form-table">
+                <tr>
+                    <th scope="row">
+                        <label for="search_hint"><?php esc_html_e('Search Hint Text', 'geekbench-scraper'); ?></label>
+                    </th>
+                    <td>
+                        <input type="text"
+                               id="search_hint"
+                               name="search_hint"
+                               value="<?php echo esc_attr(get_option('geekbench_search_hint', 'Search for any device')); ?>"
+                               class="regular-text">
+                        <p class="description">
+                            <?php esc_html_e('Hint text displayed below the search input field (10pt gray font).', 'geekbench-scraper'); ?>
+                        </p>
+                    </td>
+                </tr>
+            </table>
+
+            <p class="submit">
+                <button type="submit" name="save_frontend_settings" class="button button-primary">
+                    <?php esc_html_e('Save Frontend Settings', 'geekbench-scraper'); ?>
+                </button>
+            </p>
+        </form>
+    </div>
+
+    <hr style="margin: 40px 0;">
+
+    <!-- reCAPTCHA Settings Section -->
+    <div class="geekbench-settings-section">
+        <h2><?php esc_html_e('Google reCAPTCHA v2 Settings', 'geekbench-scraper'); ?></h2>
+        <p class="description">
+            <?php esc_html_e('Configure reCAPTCHA to protect your frontend searches from bots and abuse. Uses smart throttling to avoid annoying legitimate users.', 'geekbench-scraper'); ?>
+        </p>
+
+        <form method="post" action="">
+            <?php wp_nonce_field('geekbench_recaptcha_settings_nonce'); ?>
+
+            <table class="form-table">
+                <tr>
+                    <th scope="row">
+                        <label for="recaptcha_enabled"><?php esc_html_e('Enable reCAPTCHA', 'geekbench-scraper'); ?></label>
+                    </th>
+                    <td>
+                        <label>
+                            <input type="checkbox"
+                                   id="recaptcha_enabled"
+                                   name="recaptcha_enabled"
+                                   value="1"
+                                   <?php checked(get_option('geekbench_recaptcha_enabled', 0), 1); ?>>
+                            <?php esc_html_e('Require reCAPTCHA for frontend searches (with smart throttling)', 'geekbench-scraper'); ?>
+                        </label>
+                        <p class="description">
+                            <?php esc_html_e('Smart throttling: First 5 searches in 5 minutes don\'t require CAPTCHA. After that, CAPTCHA is required.', 'geekbench-scraper'); ?>
+                        </p>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row">
+                        <label for="recaptcha_site_key"><?php esc_html_e('Site Key', 'geekbench-scraper'); ?></label>
+                    </th>
+                    <td>
+                        <input type="text"
+                               id="recaptcha_site_key"
+                               name="recaptcha_site_key"
+                               value="<?php echo esc_attr(get_option('geekbench_recaptcha_site_key', '')); ?>"
+                               class="regular-text">
+                        <p class="description">
+                            <?php
+                            printf(
+                                esc_html__('Get your keys from %s', 'geekbench-scraper'),
+                                '<a href="https://www.google.com/recaptcha/admin" target="_blank">' . esc_html__('Google reCAPTCHA Admin', 'geekbench-scraper') . '</a>'
+                            );
+                            ?>
+                        </p>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row">
+                        <label for="recaptcha_secret_key"><?php esc_html_e('Secret Key', 'geekbench-scraper'); ?></label>
+                    </th>
+                    <td>
+                        <input type="password"
+                               id="recaptcha_secret_key"
+                               name="recaptcha_secret_key"
+                               value="<?php echo esc_attr(get_option('geekbench_recaptcha_secret_key', '')); ?>"
+                               class="regular-text">
+                        <p class="description">
+                            <?php esc_html_e('Your reCAPTCHA secret key (kept private on the server).', 'geekbench-scraper'); ?>
+                        </p>
+                    </td>
+                </tr>
+            </table>
+
+            <p class="submit">
+                <button type="submit" name="save_recaptcha_settings" class="button button-primary">
+                    <?php esc_html_e('Save reCAPTCHA Settings', 'geekbench-scraper'); ?>
+                </button>
+            </p>
+        </form>
+    </div>
+
+    <hr style="margin: 40px 0;">
+
     <div class="geekbench-settings-header">
         <h2><?php esc_html_e('System Name Translations', 'geekbench-scraper'); ?></h2>
         <p class="description">
             <?php esc_html_e('Configure system name translations to display user-friendly product names instead of internal model identifiers.', 'geekbench-scraper'); ?>
         </p>
     </div>
-    
+
     <form method="post" action="">
         <?php wp_nonce_field('geekbench_translations_nonce'); ?>
-        
+
         <h2><?php esc_html_e('System Name Translations', 'geekbench-scraper'); ?></h2>
         
         <table class="wp-list-table widefat fixed striped" id="translations-table">

@@ -3,7 +3,7 @@
  * Plugin Name: Geekbench Browser Scraper
  * Plugin URI: https://github.com/yourusername/geekbench-scraper
  * Description: Scrapes and displays Geekbench browser results with sortable tables. Default search: iPhone18 (iPhone 17 models).
- * Version: 1.1.1
+ * Version: 1.2.0
  * Author: Your Name
  * Author URI: https://yourwebsite.com
  * License: GPL-2.0-or-later
@@ -25,7 +25,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('GEEKBENCH_SCRAPER_VERSION', '1.1.0');
+define('GEEKBENCH_SCRAPER_VERSION', '1.2.0');
 define('GEEKBENCH_SCRAPER_PLUGIN_FILE', __FILE__);
 define('GEEKBENCH_SCRAPER_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('GEEKBENCH_SCRAPER_PLUGIN_URL', plugin_dir_url(__FILE__));
@@ -36,19 +36,12 @@ if (file_exists(GEEKBENCH_SCRAPER_PLUGIN_DIR . 'vendor/autoload.php')) {
     require_once GEEKBENCH_SCRAPER_PLUGIN_DIR . 'vendor/autoload.php';
 } else {
     // Show admin notice if Composer dependencies are missing
-    add_action('admin_notices', function() {
-        ?>
-        <div class="notice notice-error">
-            <p>
-                <strong>Geekbench Browser Scraper:</strong> 
-                Composer dependencies are missing. Please run <code>composer install</code> 
-                in the plugin directory: <code><?php echo esc_html(GEEKBENCH_SCRAPER_PLUGIN_DIR); ?></code>
-            </p>
-        </div>
-        <?php
-    });
+    add_action('admin_notices', __NAMESPACE__ . '\\show_missing_dependencies_notice');
     return;
 }
+
+// Show success/failure notices for auto-installation
+add_action('admin_notices', __NAMESPACE__ . '\\show_composer_install_notices');
 
 /**
  * Initialize the plugin
@@ -72,19 +65,135 @@ add_action('plugins_loaded', __NAMESPACE__ . '\\init_plugin');
  * @return void
  */
 function activate_plugin() {
+    // Auto-install Composer dependencies if missing
+    auto_install_composer_dependencies();
+
     // Flush rewrite rules
     flush_rewrite_rules();
-    
+
     // Set default options
     if (!get_option('geekbench_scraper_default_query')) {
         update_option('geekbench_scraper_default_query', 'iPhone18');
     }
-    
+
     if (!get_option('geekbench_scraper_cache_ttl')) {
         update_option('geekbench_scraper_cache_ttl', 900); // 15 minutes
     }
 }
 register_activation_hook(__FILE__, __NAMESPACE__ . '\\activate_plugin');
+
+/**
+ * Auto-install Composer dependencies on plugin activation
+ *
+ * Attempts to automatically run composer install if dependencies are missing.
+ * Supports both system composer and local composer.phar.
+ *
+ * @since 1.2.0
+ * @return void
+ */
+function auto_install_composer_dependencies() {
+    // Check if vendor directory already exists
+    if (file_exists(GEEKBENCH_SCRAPER_PLUGIN_DIR . 'vendor/autoload.php')) {
+        return; // Dependencies already installed
+    }
+
+    // Check if composer.json exists
+    if (!file_exists(GEEKBENCH_SCRAPER_PLUGIN_DIR . 'composer.json')) {
+        return; // No composer.json, can't install
+    }
+
+    // Try to install dependencies
+    $plugin_dir = GEEKBENCH_SCRAPER_PLUGIN_DIR;
+    $composer_phar = $plugin_dir . 'composer.phar';
+    $success = false;
+    $output = [];
+    $return_var = 0;
+
+    // Change to plugin directory
+    $original_dir = getcwd();
+    chdir($plugin_dir);
+
+    try {
+        // Method 1: Try local composer.phar first
+        if (file_exists($composer_phar)) {
+            // Try to find PHP binary
+            $php_binary = get_php_binary();
+
+            if ($php_binary) {
+                $command = escapeshellcmd($php_binary) . ' ' . escapeshellarg($composer_phar) . ' install --no-dev --optimize-autoloader --no-interaction 2>&1';
+                exec($command, $output, $return_var);
+
+                if ($return_var === 0) {
+                    $success = true;
+                }
+            }
+        }
+
+        // Method 2: Try system composer if local composer.phar failed
+        if (!$success && command_exists('composer')) {
+            $output = [];
+            $command = 'composer install --no-dev --optimize-autoloader --no-interaction 2>&1';
+            exec($command, $output, $return_var);
+
+            if ($return_var === 0) {
+                $success = true;
+            }
+        }
+
+        // Store installation result for admin notice
+        if ($success) {
+            set_transient('geekbench_scraper_composer_install_success', true, 60);
+        } else {
+            set_transient('geekbench_scraper_composer_install_failed', [
+                'output' => implode("\n", $output),
+                'return_code' => $return_var,
+            ], 300); // 5 minutes
+        }
+
+    } finally {
+        // Always restore original directory
+        chdir($original_dir);
+    }
+}
+
+/**
+ * Get PHP binary path
+ *
+ * Attempts to find the PHP binary in common locations.
+ *
+ * @since 1.2.0
+ * @return string|false PHP binary path or false if not found
+ */
+function get_php_binary() {
+    // Try PHP_BINARY constant first (available in PHP 5.4+)
+    if (defined('PHP_BINARY') && PHP_BINARY && is_executable(PHP_BINARY)) {
+        return PHP_BINARY;
+    }
+
+    // Try common PHP binary names
+    $php_binaries = ['php', 'php8', 'php7', 'php-cli'];
+
+    foreach ($php_binaries as $binary) {
+        $path = trim(shell_exec('which ' . escapeshellarg($binary) . ' 2>/dev/null'));
+        if ($path && is_executable($path)) {
+            return $path;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * Check if a command exists in the system
+ *
+ * @since 1.2.0
+ * @param string $command Command name to check
+ * @return bool True if command exists, false otherwise
+ */
+function command_exists($command) {
+    $test = shell_exec('which ' . escapeshellarg($command) . ' 2>/dev/null');
+    return !empty($test);
+}
 
 /**
  * Plugin deactivation hook
@@ -119,6 +228,80 @@ function add_settings_link($links) {
     return $links;
 }
 add_filter('plugin_action_links_' . plugin_basename(__FILE__), __NAMESPACE__ . '\\add_settings_link');
+
+/**
+ * Show missing dependencies notice
+ *
+ * @since 1.2.0
+ * @return void
+ */
+function show_missing_dependencies_notice() {
+    ?>
+    <div class="notice notice-error">
+        <p>
+            <strong>Geekbench Browser Scraper:</strong>
+            Composer dependencies are missing.
+        </p>
+        <p>
+            The plugin attempted to install dependencies automatically but was unable to do so.
+            Please run <code>composer install --no-dev --optimize-autoloader</code>
+            in the plugin directory: <code><?php echo esc_html(GEEKBENCH_SCRAPER_PLUGIN_DIR); ?></code>
+        </p>
+        <p>
+            <strong>Alternative:</strong> If you have <code>composer.phar</code> in the plugin directory, run:<br>
+            <code>php composer.phar install --no-dev --optimize-autoloader</code>
+        </p>
+    </div>
+    <?php
+}
+
+/**
+ * Show Composer installation notices
+ *
+ * Displays success or failure messages after auto-installation attempt.
+ *
+ * @since 1.2.0
+ * @return void
+ */
+function show_composer_install_notices() {
+    // Check for success notice
+    if (get_transient('geekbench_scraper_composer_install_success')) {
+        delete_transient('geekbench_scraper_composer_install_success');
+        ?>
+        <div class="notice notice-success is-dismissible">
+            <p>
+                <strong>Geekbench Browser Scraper:</strong>
+                ✅ Composer dependencies installed successfully!
+            </p>
+        </div>
+        <?php
+    }
+
+    // Check for failure notice
+    $failure_data = get_transient('geekbench_scraper_composer_install_failed');
+    if ($failure_data) {
+        delete_transient('geekbench_scraper_composer_install_failed');
+        ?>
+        <div class="notice notice-warning is-dismissible">
+            <p>
+                <strong>Geekbench Browser Scraper:</strong>
+                ⚠️ Unable to automatically install Composer dependencies.
+            </p>
+            <p>
+                Please run manually:<br>
+                <code>cd <?php echo esc_html(GEEKBENCH_SCRAPER_PLUGIN_DIR); ?></code><br>
+                <code>composer install --no-dev --optimize-autoloader</code>
+            </p>
+            <?php if (!empty($failure_data['output'])): ?>
+                <details>
+                    <summary>Show error details</summary>
+                    <pre style="background: #f5f5f5; padding: 10px; overflow-x: auto;"><?php echo esc_html($failure_data['output']); ?></pre>
+                </details>
+            <?php endif; ?>
+        </div>
+        <?php
+    }
+}
 
 /**
  * Plugin uninstall hook

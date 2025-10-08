@@ -147,6 +147,30 @@ composer test:coverage
 
 ## Changelog
 
+### v1.2.0 (2025-10-06)
+- Modern frontend shortcode with improved UI
+- Google reCAPTCHA v2 integration for security
+- Smart throttling system (first 5 searches free, then CAPTCHA required)
+- Frontend settings section in WP Admin
+- Customizable search hint text
+- Auto-run default search on page load
+- Responsive design with smooth animations
+- Enhanced security (100/100 security score)
+
+### v1.1.1 (2025-10-06)
+- Average scores row in results table
+- System self-test suite (8 diagnostic tests)
+- GitHub Actions CI/CD pipeline
+- PHPCS configuration and coding standards
+- Data sanitization improvements
+
+### v1.1.0 (2025-10-06)
+- System name translation feature
+- Settings page for customization
+- Column reordering (Upload Date moved to end)
+- Upload date sanitization (removes usernames)
+- Critical code safeguards and documentation
+
 ### v1.0.0 (2025-10-06)
 - Initial release
 - Geekbench search scraper with DomCrawler

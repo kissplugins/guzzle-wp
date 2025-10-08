@@ -181,6 +181,12 @@ Example URL: https://browser.geekbench.com/search?q=Iphone18
   - Real-time AJAX execution with progress indicators
   - Detailed error messages for troubleshooting
 
+  - [ ] **Security considerations** (See SECURITY-REVIEW.md for details)
+  - [x] Sanitize all shortcode attributes - COMPLETE
+  - [ ] Use WordPress nonces for AJAX requests from frontend - PARTIAL (admin complete, frontend missing)
+  - [ ] Rate limiting to prevent abuse (max requests per IP/session) - NOT IMPLEMENTED
+  - [x] Cache results per unique query to reduce server load - COMPLETE (15-min TTL)
+
 ---
 
 ## Phase 4: Frontend Shortcode Implementation
@@ -220,11 +226,6 @@ Example URL: https://browser.geekbench.com/search?q=Iphone18
   - AJAX loading without page refresh
   - Loading spinner/skeleton during data fetch
 
-- [ ] **Security considerations**
-  - Sanitize all shortcode attributes
-  - Use WordPress nonces for AJAX requests from frontend
-  - Rate limiting to prevent abuse (max requests per IP/session)
-  - Cache results per unique query to reduce server load
 
 ### Shortcode Usage Examples
 
