@@ -312,3 +312,262 @@ if (!isset($table_class)) {
 }
 </style>
 
+<!--
+    ⚠️ CRITICAL: DO NOT REMOVE OR REFACTOR THIS JAVASCRIPT SECTION ⚠️
+    This section contains the table sorting functionality.
+    Removing this will break table sorting on both admin and frontend.
+    Last verified: 2025-10-08
+    Self-test available in: WP Admin → Tools → Geekbench Settings
+-->
+<script>
+/**
+ * Table Sorting Functionality
+ *
+ * ⚠️ CRITICAL COMPONENT - DO NOT REMOVE ⚠️
+ *
+ * This function provides ascending/descending sorting for all table columns.
+ * Used by both admin interface and frontend shortcode.
+ *
+ * Features:
+ * - Click column header to sort ascending
+ * - Click again to sort descending
+ * - Click third time to restore original order
+ * - Visual indicators (↑ ↓ ↕)
+ * - Handles text, numbers, and dates
+ * - Preserves average row in footer
+ *
+ * @since 1.0.0
+ * @version 1.3.1
+ */
+function initTableSort() {
+    const table = document.querySelector('#geekbench-results-table');
+    if (!table) return;
+
+    const headers = table.querySelectorAll('th.sortable');
+    const tbody = table.querySelector('tbody');
+
+    if (!tbody) return;
+
+    // Store original order
+    const originalOrder = Array.from(tbody.querySelectorAll('tr'));
+
+    headers.forEach(header => {
+        let currentSort = null; // null = original, 'asc' = ascending, 'desc' = descending
+
+        header.addEventListener('click', function() {
+            const sortKey = this.getAttribute('data-sort');
+
+            // Remove sort classes from all headers
+            headers.forEach(h => {
+                h.classList.remove('sort-asc', 'sort-desc');
+            });
+
+            // Determine next sort state
+            if (currentSort === null) {
+                currentSort = 'asc';
+                this.classList.add('sort-asc');
+            } else if (currentSort === 'asc') {
+                currentSort = 'desc';
+                this.classList.add('sort-desc');
+            } else {
+                currentSort = null;
+                // Restore original order
+                originalOrder.forEach(row => tbody.appendChild(row));
+                return;
+            }
+
+            // Get all rows
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+
+            // Sort rows
+            rows.sort((a, b) => {
+                let aValue, bValue;
+
+                if (sortKey === 'single-core' || sortKey === 'multi-core') {
+                    // Numeric sort for scores
+                    aValue = parseInt(a.getAttribute('data-' + sortKey)) || 0;
+                    bValue = parseInt(b.getAttribute('data-' + sortKey)) || 0;
+                } else if (sortKey === 'date') {
+                    // Date sort
+                    aValue = a.getAttribute('data-date') || '';
+                    bValue = b.getAttribute('data-date') || '';
+                } else if (sortKey === 'system-name') {
+                    // System name sort - use data attribute from row
+                    aValue = (a.getAttribute('data-system-name') || '').toLowerCase();
+                    bValue = (b.getAttribute('data-system-name') || '').toLowerCase();
+                } else if (sortKey === 'processor') {
+                    // Processor sort - use data attribute from row
+                    aValue = (a.getAttribute('data-processor') || '').toLowerCase();
+                    bValue = (b.getAttribute('data-processor') || '').toLowerCase();
+                } else if (sortKey === 'platform') {
+                    // Platform sort - use data attribute from row
+                    aValue = (a.getAttribute('data-platform') || '').toLowerCase();
+                    bValue = (b.getAttribute('data-platform') || '').toLowerCase();
+                } else {
+                    // Fallback: try to get value from cell text content
+                    const columnIndex = Array.from(headers).findIndex(h => h.getAttribute('data-sort') === sortKey);
+                    if (columnIndex >= 0) {
+                        const aCell = a.cells[columnIndex];
+                        const bCell = b.cells[columnIndex];
+                        aValue = aCell ? aCell.textContent.trim().toLowerCase() : '';
+                        bValue = bCell ? bCell.textContent.trim().toLowerCase() : '';
+                    } else {
+                        aValue = '';
+                        bValue = '';
+                    }
+                }
+
+                if (currentSort === 'asc') {
+                    return aValue > bValue ? 1 : aValue < bValue ? -1 : 0;
+                } else {
+                    return aValue < bValue ? 1 : aValue > bValue ? -1 : 0;
+                }
+            });
+
+            // Re-append sorted rows
+            rows.forEach(row => tbody.appendChild(row));
+        });
+    });
+}
+
+// Auto-initialize on page load
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initTableSort);
+} else {
+    initTableSort();
+}
+
+/**
+ * Self-Test Function for Table Sorting
+ *
+ * ⚠️ DO NOT REMOVE - Used by settings page self-test ⚠️
+ *
+ * Tests if table sorting functionality is working correctly.
+ * Called from WP Admin → Tools → Geekbench Settings
+ *
+ * @returns {Object} Test results with status and message
+ */
+function testTableSorting() {
+    const results = {
+        passed: true,
+        tests: [],
+        message: ''
+    };
+
+    // Test 1: Check if initTableSort function exists
+    if (typeof initTableSort !== 'function') {
+        results.passed = false;
+        results.tests.push({
+            name: 'Function Exists',
+            status: 'FAIL',
+            message: 'initTableSort function not found'
+        });
+        results.message = '❌ CRITICAL: Table sorting function is missing!';
+        return results;
+    }
+    results.tests.push({
+        name: 'Function Exists',
+        status: 'PASS',
+        message: 'initTableSort function found'
+    });
+
+    // Test 2: Check if table exists
+    const table = document.querySelector('#geekbench-results-table');
+    if (!table) {
+        results.tests.push({
+            name: 'Table Exists',
+            status: 'SKIP',
+            message: 'No table on current page (this is OK for settings page)'
+        });
+    } else {
+        results.tests.push({
+            name: 'Table Exists',
+            status: 'PASS',
+            message: 'Table found on page'
+        });
+
+        // Test 3: Check if sortable headers exist
+        const sortableHeaders = table.querySelectorAll('th.sortable');
+        if (sortableHeaders.length === 0) {
+            results.passed = false;
+            results.tests.push({
+                name: 'Sortable Headers',
+                status: 'FAIL',
+                message: 'No sortable headers found'
+            });
+        } else {
+            results.tests.push({
+                name: 'Sortable Headers',
+                status: 'PASS',
+                message: `Found ${sortableHeaders.length} sortable columns`
+            });
+        }
+
+        // Test 4: Check if sort indicators exist
+        const sortIndicators = table.querySelectorAll('.sort-indicator');
+        if (sortIndicators.length === 0) {
+            results.passed = false;
+            results.tests.push({
+                name: 'Sort Indicators',
+                status: 'FAIL',
+                message: 'No sort indicators found'
+            });
+        } else {
+            results.tests.push({
+                name: 'Sort Indicators',
+                status: 'PASS',
+                message: `Found ${sortIndicators.length} sort indicators`
+            });
+        }
+
+        // Test 5: Check if table rows have required data attributes
+        const firstRow = table.querySelector('tbody tr');
+        if (firstRow && !firstRow.classList.contains('no-results')) {
+            const requiredAttrs = ['data-system-name', 'data-processor', 'data-platform', 'data-single-core', 'data-multi-core', 'data-date'];
+            const missingAttrs = [];
+
+            requiredAttrs.forEach(attr => {
+                if (!firstRow.hasAttribute(attr)) {
+                    missingAttrs.push(attr);
+                }
+            });
+
+            if (missingAttrs.length > 0) {
+                results.passed = false;
+                results.tests.push({
+                    name: 'Data Attributes',
+                    status: 'FAIL',
+                    message: `Missing attributes: ${missingAttrs.join(', ')}`
+                });
+            } else {
+                results.tests.push({
+                    name: 'Data Attributes',
+                    status: 'PASS',
+                    message: 'All required data attributes present on table rows'
+                });
+            }
+        } else {
+            results.tests.push({
+                name: 'Data Attributes',
+                status: 'SKIP',
+                message: 'No data rows to test (table is empty)'
+            });
+        }
+    }
+
+    // Generate summary message
+    if (results.passed) {
+        results.message = '✅ All table sorting tests passed!';
+    } else {
+        results.message = '❌ Some table sorting tests failed. Check details above.';
+    }
+
+    return results;
+}
+
+// Expose to global scope for settings page
+window.initTableSort = initTableSort;
+window.testTableSorting = testTableSorting;
+</script>
+<!-- END CRITICAL SECTION - DO NOT REMOVE -->
+

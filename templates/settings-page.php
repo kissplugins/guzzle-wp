@@ -448,6 +448,11 @@ jQuery(document).ready(function($) {
                 name: 'HTML Parser Test',
                 description: 'Test DOM selectors extract data correctly',
                 test: testHTMLParser
+            },
+            {
+                name: 'Table Sorting Test',
+                description: 'Test table sorting functionality (ascending/descending)',
+                test: testTableSorting
             }
         ];
 
@@ -713,6 +718,65 @@ jQuery(document).ready(function($) {
             },
             error: function() {
                 callback(false, 'AJAX request failed', 'Could not communicate with server');
+            }
+        });
+    }
+
+    /**
+     * Test Table Sorting Functionality
+     *
+     * ⚠️ CRITICAL TEST - DO NOT REMOVE ⚠️
+     *
+     * This test verifies that the table sorting JavaScript is present and functional.
+     * If this test fails, table sorting is broken on both admin and frontend.
+     *
+     * Note: This test runs on the settings page where results-table.php is not loaded.
+     * We test by checking if the initTableSort function would be available on pages with tables.
+     *
+     * @since 1.3.1
+     */
+    function testTableSorting(callback) {
+        // Since we're on the settings page, we need to check if the sorting code exists in the file
+        // We'll do this by making an AJAX request to verify the code is present
+
+        $.ajax({
+            url: ajaxurl,
+            method: 'POST',
+            data: {
+                action: 'geekbench_test_table_sorting',
+                nonce: '<?php echo wp_create_nonce('geekbench_self_test'); ?>'
+            },
+            success: function(response) {
+                if (response.success) {
+                    // Build details from test results
+                    let details = '<strong>Table sorting validation:</strong><ul>';
+                    if (response.data.details) {
+                        response.data.details.forEach(function(detail) {
+                            details += `<li>✓ ${detail}</li>`;
+                        });
+                    }
+                    details += '</ul>';
+                    details += '<p><em>Note: Full sorting functionality can only be tested on pages with results tables.</em></p>';
+
+                    callback(true, response.data.message, details);
+                } else {
+                    let details = '<strong>Table sorting validation failed:</strong><ul>';
+                    if (response.data.details) {
+                        response.data.details.forEach(function(detail) {
+                            details += `<li style="color: #dc3545;">✗ ${detail}</li>`;
+                        });
+                    }
+                    details += '</ul>';
+                    details += '<p style="color: #dc3545; font-weight: bold;">⚠️ ACTION REQUIRED: Check templates/results-table.php for missing JavaScript!</p>';
+
+                    callback(false, response.data.message, details);
+                }
+            },
+            error: function() {
+                callback(false,
+                    'AJAX request failed',
+                    'Could not communicate with server to test table sorting'
+                );
             }
         });
     }

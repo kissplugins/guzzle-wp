@@ -93,6 +93,17 @@ Shows maximum 15 results.
 - **Secret Key**: Your Google reCAPTCHA v2 secret key
 - **Get Keys**: [Google reCAPTCHA Admin](https://www.google.com/recaptcha/admin)
 
+### Server-Side Throttling ✅
+**Location**: `src/Shortcode.php`
+
+- **IP-based tracking** using WordPress transients
+- **5-search limit** enforced on the backend
+- **reCAPTCHA required** after 5 searches (server-side validation)
+- **Bypass prevention** - JavaScript manipulation cannot circumvent limits
+- **Automatic reset** after successful reCAPTCHA verification
+- **5-minute window** for transient storage
+- **Proxy-aware** IP detection (Cloudflare, X-Forwarded-For, etc.)
+
 ---
 
 ## Files Modified
@@ -185,23 +196,58 @@ Shows maximum 15 results.
 ## Smart Throttling Details
 
 ### How It Works
+
+#### Client-Side (UI Hint)
 1. **Counter Tracking**: JavaScript tracks search count per session
 2. **Time Window**: 5 minutes for throttle window
 3. **Threshold**: 5 searches before CAPTCHA required
 4. **Inactivity Reset**: 30 minutes of inactivity resets counter
 5. **Auto-load Exempt**: Initial page load doesn't count toward limit
 
+#### Server-Side (Enforcement) ✅
+1. **IP-Based Tracking**: Uses WordPress transients to track searches per IP address
+2. **Transient Key**: `geekbench_throttle_{md5(ip_address)}`
+3. **5-Minute Window**: Transient expires after 5 minutes (300 seconds)
+4. **Hard Limit**: Server enforces 5-search limit regardless of client-side state
+5. **reCAPTCHA Required**: After 5 searches, server requires valid reCAPTCHA token
+6. **Bypass Prevention**: Cannot be circumvented by JavaScript manipulation
+7. **Automatic Reset**: Counter resets after successful reCAPTCHA verification
+8. **Proxy Support**: Detects real IP behind Cloudflare, proxies, etc.
+
 ### Configuration Variables
 ```javascript
+// Client-side (hint only)
 const THROTTLE_WINDOW = 5 * 60 * 1000;        // 5 minutes
 const MAX_SEARCHES_BEFORE_CAPTCHA = 5;        // 5 searches
 const INACTIVITY_RESET = 30 * 60 * 1000;      // 30 minutes
 ```
 
+```php
+// Server-side (enforcement)
+$max_searches = 5;                             // 5 searches before CAPTCHA
+$transient_expiry = 5 * MINUTE_IN_SECONDS;    // 5 minutes (300 seconds)
+```
+
 ### User Experience
 - **Searches 1-5**: ✅ No CAPTCHA (smooth experience)
-- **Search 6+**: ⚠️ CAPTCHA required (security kicks in)
-- **After 30 min**: ✅ Counter resets (fresh start)
+- **Search 6+**: ⚠️ CAPTCHA required (server enforces)
+- **After 5 min**: ✅ Counter resets (transient expires)
+- **After CAPTCHA**: ✅ Counter resets (fresh start)
+
+### Security Flow
+```
+User Search Request
+    ↓
+Server checks IP-based transient
+    ↓
+Count < 5? → Allow + Increment counter
+    ↓
+Count ≥ 5? → Require reCAPTCHA
+    ↓
+reCAPTCHA valid? → Allow + Reset counter
+    ↓
+reCAPTCHA invalid? → Reject request
+```
 
 ---
 
@@ -218,16 +264,32 @@ const INACTIVITY_RESET = 30 * 60 * 1000;      // 30 minutes
 - Token-based authentication
 - Error handling for failed verification
 
-### 3. Smart Throttling ✅
-- Prevents automated abuse
-- Stops bot scraping
-- Protects server resources
-- User-friendly for legitimate users
+### 3. Server-Side Throttling ✅ **NEW**
+- **IP-based tracking** using WordPress transients
+- **Cannot be bypassed** by JavaScript manipulation
+- **5-search hard limit** enforced on backend
+- **Automatic expiration** after 5 minutes
+- **Proxy-aware** IP detection
+- **Prevents automated abuse** and bot scraping
+- **Protects server resources** from excessive requests
+- **User-friendly** for legitimate users
 
-### 4. Nonce Protection ✅
+### 4. Client-Side Throttling ✅
+- Provides UI hints to users
+- Shows CAPTCHA widget proactively
+- Smooth user experience
+- Syncs with server-side enforcement
+
+### 5. Nonce Protection ✅
 - Settings forms use nonces
 - AJAX handlers verify nonces (admin)
 - CSRF protection
+
+### 6. Rate Limiting ✅
+- Per-IP address tracking
+- Transient-based storage (no database bloat)
+- Automatic cleanup after expiration
+- Configurable limits
 
 ---
 

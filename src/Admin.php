@@ -43,6 +43,7 @@ class Admin {
         add_action('wp_ajax_geekbench_scraper_refresh', [$this, 'ajax_refresh_results']);
         add_action('wp_ajax_geekbench_scraper_save_translations', [$this, 'ajax_save_translations']);
         add_action('wp_ajax_geekbench_self_test', [$this, 'ajax_self_test']);
+        add_action('wp_ajax_geekbench_test_table_sorting', [$this, 'ajax_test_table_sorting']);
     }
     
     /**
@@ -785,6 +786,118 @@ class Admin {
             wp_send_json_error([
                 'message' => 'HTML parser test failed',
                 'details' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Test table sorting functionality
+     *
+     * @since 1.3.1
+     * @return void
+     */
+    public function ajax_test_table_sorting() {
+        // Verify nonce
+        check_ajax_referer('geekbench_self_test', 'nonce');
+
+        // Check permissions
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error([
+                'message' => __('Insufficient permissions', 'geekbench-scraper'),
+            ]);
+        }
+
+        // Check if results-table.php file exists
+        $template_file = GEEKBENCH_SCRAPER_PLUGIN_DIR . 'templates/results-table.php';
+
+        if (!file_exists($template_file)) {
+            wp_send_json_error([
+                'message' => 'Template file not found',
+                'details' => ['templates/results-table.php file is missing'],
+            ]);
+            return;
+        }
+
+        // Read the template file and check for critical functions
+        $file_content = file_get_contents($template_file);
+
+        $checks = [];
+        $all_passed = true;
+
+        // Check 1: initTableSort function exists
+        if (strpos($file_content, 'function initTableSort()') !== false) {
+            $checks[] = 'initTableSort() function found in template';
+        } else {
+            $checks[] = '❌ initTableSort() function MISSING from template';
+            $all_passed = false;
+        }
+
+        // Check 2: testTableSorting function exists
+        if (strpos($file_content, 'function testTableSorting()') !== false) {
+            $checks[] = 'testTableSorting() function found in template';
+        } else {
+            $checks[] = '❌ testTableSorting() function MISSING from template';
+            $all_passed = false;
+        }
+
+        // Check 3: Critical section warning exists
+        if (strpos($file_content, 'CRITICAL: DO NOT REMOVE OR REFACTOR THIS JAVASCRIPT SECTION') !== false) {
+            $checks[] = 'Critical section warning present';
+        } else {
+            $checks[] = '⚠️ Critical section warning missing (not critical but recommended)';
+        }
+
+        // Check 4: Sortable headers markup exists
+        if (strpos($file_content, 'class="sortable"') !== false) {
+            $checks[] = 'Sortable header classes found';
+        } else {
+            $checks[] = '❌ Sortable header classes MISSING';
+            $all_passed = false;
+        }
+
+        // Check 5: Sort indicators exist
+        if (strpos($file_content, 'class="sort-indicator"') !== false) {
+            $checks[] = 'Sort indicator elements found';
+        } else {
+            $checks[] = '❌ Sort indicator elements MISSING';
+            $all_passed = false;
+        }
+
+        // Check 6: Data attributes for sorting
+        if (strpos($file_content, 'data-system-name') !== false &&
+            strpos($file_content, 'data-processor') !== false &&
+            strpos($file_content, 'data-platform') !== false) {
+            $checks[] = 'Data attributes for sorting found';
+        } else {
+            $checks[] = '❌ Required data attributes MISSING';
+            $all_passed = false;
+        }
+
+        // Check 7: Auto-initialization code
+        if (strpos($file_content, 'DOMContentLoaded') !== false &&
+            strpos($file_content, 'initTableSort') !== false) {
+            $checks[] = 'Auto-initialization code found';
+        } else {
+            $checks[] = '❌ Auto-initialization code MISSING';
+            $all_passed = false;
+        }
+
+        // Check 8: Global scope exposure
+        if (strpos($file_content, 'window.initTableSort') !== false) {
+            $checks[] = 'Functions exposed to global scope';
+        } else {
+            $checks[] = '⚠️ Functions not exposed to global scope (not critical)';
+        }
+
+        if ($all_passed) {
+            wp_send_json_success([
+                'message' => 'Table sorting code is present and complete',
+                'details' => $checks,
+            ]);
+        } else {
+            wp_send_json_error([
+                'message' => 'Table sorting code has missing components',
+                'details' => $checks,
             ]);
         }
     }
