@@ -5,6 +5,33 @@ All notable changes to the Geekbench Browser Scraper WordPress plugin will be do
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.1] - 2025-10-08
+
+### Fixed
+- **Table Sorting Restored** (Oct 8, 2025):
+  - Restored missing table sorting JavaScript functionality
+  - Added `initTableSort()` function to `templates/results-table.php`
+  - Supports ascending/descending/original order sorting
+  - Works on all columns (text, numbers, dates)
+  - Visual indicators (↑ ↓ ↕) for sort direction
+  - Preserves average row in footer during sorting
+
+### Added
+- **Table Sorting Self-Test** (Oct 8, 2025):
+  - Added automated self-test in WP Admin → Tools → Geekbench Settings
+  - Tests if `initTableSort()` function exists
+  - Verifies sortable headers and indicators are present
+  - Prevents table sorting from being accidentally removed
+  - Provides detailed test results and error messages
+  - Added `testTableSorting()` function for validation
+
+### Changed
+- **Code Safeguards** (Oct 8, 2025):
+  - Added critical section warnings in `templates/results-table.php`
+  - Clear comments: "⚠️ CRITICAL: DO NOT REMOVE OR REFACTOR THIS JAVASCRIPT SECTION ⚠️"
+  - Exposed functions to global scope for testing
+  - Added comprehensive inline documentation
+
 ## [1.3.0] - 2025-10-08
 
 ### Added

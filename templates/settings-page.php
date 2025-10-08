@@ -448,6 +448,11 @@ jQuery(document).ready(function($) {
                 name: 'HTML Parser Test',
                 description: 'Test DOM selectors extract data correctly',
                 test: testHTMLParser
+            },
+            {
+                name: 'Table Sorting Test',
+                description: 'Test table sorting functionality (ascending/descending)',
+                test: testTableSorting
             }
         ];
 
@@ -715,6 +720,70 @@ jQuery(document).ready(function($) {
                 callback(false, 'AJAX request failed', 'Could not communicate with server');
             }
         });
+    }
+
+    /**
+     * Test Table Sorting Functionality
+     *
+     * ⚠️ CRITICAL TEST - DO NOT REMOVE ⚠️
+     *
+     * This test verifies that the table sorting JavaScript is present and functional.
+     * If this test fails, table sorting is broken on both admin and frontend.
+     *
+     * @since 1.3.1
+     */
+    function testTableSorting(callback) {
+        // Check if testTableSorting function exists (from results-table.php)
+        if (typeof window.testTableSorting !== 'function') {
+            callback(false,
+                'Table sorting test function not found',
+                '❌ CRITICAL: The testTableSorting() function is missing from results-table.php. Table sorting is broken!'
+            );
+            return;
+        }
+
+        // Run the self-test from results-table.php
+        try {
+            const results = window.testTableSorting();
+
+            if (!results) {
+                callback(false,
+                    'Test function returned no results',
+                    'The testTableSorting() function exists but returned undefined'
+                );
+                return;
+            }
+
+            // Check if all tests passed
+            if (results.passed) {
+                // Build details from individual test results
+                let details = '<strong>All table sorting tests passed:</strong><ul>';
+                results.tests.forEach(function(test) {
+                    const icon = test.status === 'PASS' ? '✓' : (test.status === 'SKIP' ? '⊘' : '✗');
+                    details += `<li>${icon} ${test.name}: ${test.message}</li>`;
+                });
+                details += '</ul>';
+
+                callback(true, results.message, details);
+            } else {
+                // Build details from failed tests
+                let details = '<strong>Some table sorting tests failed:</strong><ul>';
+                results.tests.forEach(function(test) {
+                    const icon = test.status === 'PASS' ? '✓' : (test.status === 'SKIP' ? '⊘' : '✗');
+                    const color = test.status === 'FAIL' ? 'color: #dc3545;' : '';
+                    details += `<li style="${color}">${icon} ${test.name}: ${test.message}</li>`;
+                });
+                details += '</ul>';
+                details += '<p style="color: #dc3545; font-weight: bold;">⚠️ ACTION REQUIRED: Check templates/results-table.php for missing JavaScript!</p>';
+
+                callback(false, results.message, details);
+            }
+        } catch (error) {
+            callback(false,
+                'Test execution failed',
+                `Error running table sorting test: ${error.message}`
+            );
+        }
     }
 
     // ========================================
