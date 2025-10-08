@@ -3,7 +3,7 @@
  * Plugin Name: Guzzle WP - Example Plugin
  * Plugin URI: https://github.com/kissplugins/guzzle-wp
  * Description: Example/demo plugin showcasing Guzzle HTTP Client and Symfony DomCrawler in WordPress. Uses Geekbench scraping as a practical demonstration.
- * Version: 1.3.5
+ * Version: 1.3.6
  * Author: Guzzle WP Contributors Inc. Guzzle, DomCrawler, and KISS Plugins
  * Author URI: https://github.com/kissplugins/guzzle-wp
  * License: MIT
@@ -11,7 +11,7 @@
  * Text Domain: geekbench-scraper
  * Domain Path: /languages
  * Requires at least: 5.8
- * Requires PHP: 7.4
+ * Requires PHP: 8.0
  *
  * @package GeekbenchScraper
  * @since 1.0.0
@@ -29,7 +29,7 @@ $test_log = WP_CONTENT_DIR . '/geekbench-test.log';
 file_put_contents($test_log, date('[Y-m-d H:i:s] ') . "Plugin file loaded!\n", FILE_APPEND);
 
 // Define plugin constants
-define('GEEKBENCH_SCRAPER_VERSION', '1.3.5');
+define('GEEKBENCH_SCRAPER_VERSION', '1.3.6');
 define('GEEKBENCH_SCRAPER_PLUGIN_FILE', __FILE__);
 define('GEEKBENCH_SCRAPER_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('GEEKBENCH_SCRAPER_PLUGIN_URL', plugin_dir_url(__FILE__));
