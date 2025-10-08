@@ -15,12 +15,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Works on all columns (text, numbers, dates)
   - Visual indicators (↑ ↓ ↕) for sort direction
   - Preserves average row in footer during sorting
+  - **Fixed text column sorting** (system-name, processor, platform) to use row-level data attributes
+  - All columns now sort correctly using appropriate data sources
 
 ### Added
 - **Table Sorting Self-Test** (Oct 8, 2025):
   - Added automated self-test in WP Admin → Tools → Geekbench Settings
   - Tests if `initTableSort()` function exists
   - Verifies sortable headers and indicators are present
+  - Validates data attributes on table rows
   - Prevents table sorting from being accidentally removed
   - Provides detailed test results and error messages
   - Added `testTableSorting()` function for validation
@@ -31,6 +34,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Clear comments: "⚠️ CRITICAL: DO NOT REMOVE OR REFACTOR THIS JAVASCRIPT SECTION ⚠️"
   - Exposed functions to global scope for testing
   - Added comprehensive inline documentation
+- **Sorting Logic Improved** (Oct 8, 2025):
+  - Text columns now use row-level `data-*` attributes for reliable sorting
+  - Numeric columns use `parseInt()` for proper number sorting
+  - Date columns use string comparison on ISO format dates
+  - Added fallback to cell text content if data attribute missing
 
 ## [1.3.0] - 2025-10-08
 

@@ -391,12 +391,30 @@ function initTableSort() {
                     // Date sort
                     aValue = a.getAttribute('data-date') || '';
                     bValue = b.getAttribute('data-date') || '';
+                } else if (sortKey === 'system-name') {
+                    // System name sort - use data attribute from row
+                    aValue = (a.getAttribute('data-system-name') || '').toLowerCase();
+                    bValue = (b.getAttribute('data-system-name') || '').toLowerCase();
+                } else if (sortKey === 'processor') {
+                    // Processor sort - use data attribute from row
+                    aValue = (a.getAttribute('data-processor') || '').toLowerCase();
+                    bValue = (b.getAttribute('data-processor') || '').toLowerCase();
+                } else if (sortKey === 'platform') {
+                    // Platform sort - use data attribute from row
+                    aValue = (a.getAttribute('data-platform') || '').toLowerCase();
+                    bValue = (b.getAttribute('data-platform') || '').toLowerCase();
                 } else {
-                    // Text sort
-                    const aCell = a.querySelector(`[data-label="${sortKey}"]`);
-                    const bCell = b.querySelector(`[data-label="${sortKey}"]`);
-                    aValue = aCell ? aCell.textContent.trim().toLowerCase() : '';
-                    bValue = bCell ? bCell.textContent.trim().toLowerCase() : '';
+                    // Fallback: try to get value from cell text content
+                    const columnIndex = Array.from(headers).findIndex(h => h.getAttribute('data-sort') === sortKey);
+                    if (columnIndex >= 0) {
+                        const aCell = a.cells[columnIndex];
+                        const bCell = b.cells[columnIndex];
+                        aValue = aCell ? aCell.textContent.trim().toLowerCase() : '';
+                        bValue = bCell ? bCell.textContent.trim().toLowerCase() : '';
+                    } else {
+                        aValue = '';
+                        bValue = '';
+                    }
                 }
 
                 if (currentSort === 'asc') {
@@ -499,6 +517,40 @@ function testTableSorting() {
                 name: 'Sort Indicators',
                 status: 'PASS',
                 message: `Found ${sortIndicators.length} sort indicators`
+            });
+        }
+
+        // Test 5: Check if table rows have required data attributes
+        const firstRow = table.querySelector('tbody tr');
+        if (firstRow && !firstRow.classList.contains('no-results')) {
+            const requiredAttrs = ['data-system-name', 'data-processor', 'data-platform', 'data-single-core', 'data-multi-core', 'data-date'];
+            const missingAttrs = [];
+
+            requiredAttrs.forEach(attr => {
+                if (!firstRow.hasAttribute(attr)) {
+                    missingAttrs.push(attr);
+                }
+            });
+
+            if (missingAttrs.length > 0) {
+                results.passed = false;
+                results.tests.push({
+                    name: 'Data Attributes',
+                    status: 'FAIL',
+                    message: `Missing attributes: ${missingAttrs.join(', ')}`
+                });
+            } else {
+                results.tests.push({
+                    name: 'Data Attributes',
+                    status: 'PASS',
+                    message: 'All required data attributes present on table rows'
+                });
+            }
+        } else {
+            results.tests.push({
+                name: 'Data Attributes',
+                status: 'SKIP',
+                message: 'No data rows to test (table is empty)'
             });
         }
     }
