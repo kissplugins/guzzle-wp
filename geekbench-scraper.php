@@ -1,13 +1,13 @@
 <?php
 /**
- * Plugin Name: Geekbench Browser Scraper
- * Plugin URI: https://github.com/yourusername/geekbench-scraper
- * Description: Scrapes and displays Geekbench browser results with sortable tables. Default search: iPhone18 (iPhone 17 models).
- * Version: 1.3.1
- * Author: Your Name
- * Author URI: https://yourwebsite.com
- * License: GPL-2.0-or-later
- * License URI: https://www.gnu.org/licenses/gpl-2.0.html
+ * Plugin Name: Guzzle WP - Example Plugin
+ * Plugin URI: https://github.com/kissplugins/guzzle-wp
+ * Description: Example/demo plugin showcasing Guzzle HTTP Client and Symfony DomCrawler in WordPress. Uses Geekbench scraping as a practical demonstration.
+ * Version: 1.3.2
+ * Author: Guzzle WP Contributors
+ * Author URI: https://github.com/kissplugins/guzzle-wp
+ * License: MIT
+ * License URI: https://opensource.org/licenses/MIT
  * Text Domain: geekbench-scraper
  * Domain Path: /languages
  * Requires at least: 5.8
@@ -25,7 +25,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('GEEKBENCH_SCRAPER_VERSION', '1.3.1');
+define('GEEKBENCH_SCRAPER_VERSION', '1.3.2');
 define('GEEKBENCH_SCRAPER_PLUGIN_FILE', __FILE__);
 define('GEEKBENCH_SCRAPER_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('GEEKBENCH_SCRAPER_PLUGIN_URL', plugin_dir_url(__FILE__));

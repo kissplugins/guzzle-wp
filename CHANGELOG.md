@@ -1,9 +1,37 @@
 # Changelog
 
-All notable changes to the Geekbench Browser Scraper WordPress plugin will be documented in this file.
+All notable changes to the Guzzle WP example plugin will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+---
+
+## [1.3.2] - 2025-10-08
+
+### Changed
+- **Project Repositioning** (Oct 8, 2025):
+  - Repositioned as an **example/demo project** for Guzzle and DomCrawler in WordPress
+  - Updated README.md to emphasize learning and reference purposes
+  - Clarified that Geekbench scraping is a demonstration use case
+  - Added comprehensive code examples and architecture documentation
+  - Enhanced documentation for developers learning to integrate modern PHP libraries in WordPress
+
+### Added
+- **MIT License** (Oct 8, 2025):
+  - Changed license from GPL to MIT to match Guzzle and DomCrawler
+  - Updated LICENSE file with proper copyright notices
+  - Added third-party license attributions for dependencies
+  - Documented license compatibility in README.md
+
+- **Enhanced Documentation** (Oct 8, 2025):
+  - Added "What You'll Learn" section to README
+  - Added code examples for Guzzle, DomCrawler, transients, and throttling
+  - Added architecture and design patterns documentation
+  - Added contributing guidelines
+  - Added learning resources section
+
+---
 
 ## [1.3.1] - 2025-10-08
 
