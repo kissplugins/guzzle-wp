@@ -18,390 +18,408 @@ namespace GeekbenchScraper;
  * @since 1.0.0
  */
 class Shortcode {
-    
-    /**
-     * Scraper instance
-     *
-     * @var Scraper
-     */
-    private $scraper;
-    
-    /**
-     * Constructor
-     *
-     * @since 1.0.0
-     * @param Scraper $scraper Scraper instance
-     */
-    public function __construct(Scraper $scraper) {
-        $this->scraper = $scraper;
 
-        // Log to custom file
-        $log_file = WP_CONTENT_DIR . '/geekbench-init.log';
-        file_put_contents($log_file, date('[Y-m-d H:i:s] ') . "[Shortcode] Constructor called\n", FILE_APPEND);
+	/**
+	 * Scraper instance
+	 *
+	 * @var Scraper
+	 */
+	private $scraper;
 
-        // Register shortcode
-        add_shortcode('geekbench_results', [$this, 'render']);
-        file_put_contents($log_file, date('[Y-m-d H:i:s] ') . "[Shortcode] Shortcode registered\n", FILE_APPEND);
+	/**
+	 * Constructor
+	 *
+	 * @since 1.0.0
+	 * @param Scraper $scraper Scraper instance
+	 */
+	public function __construct( Scraper $scraper ) {
+		$this->scraper = $scraper;
 
-        // ============================================================================
-        // CRITICAL: AJAX Handler Registration for Frontend Search
-        // ============================================================================
-        // DO NOT REMOVE OR MODIFY THESE HANDLERS WITHOUT TESTING FRONTEND SEARCH!
-        //
-        // These handlers are ESSENTIAL for frontend shortcode search to work:
-        //   - wp_ajax_nopriv_geekbench_scraper_fetch: For non-logged-in users
-        //   - wp_ajax_geekbench_scraper_fetch: For logged-in users
-        //
-        // IMPORTANT: The Admin class does NOT register these handlers (see Admin.php)
-        // to prevent conflicts. The Shortcode class is the ONLY place where
-        // geekbench_scraper_fetch is registered.
-        //
-        // TESTING: After any changes, test:
-        //   1. Frontend search while logged OUT
-        //   2. Frontend search while logged IN
-        //   3. Admin interface search (should still work)
-        // ============================================================================
+		// Log to custom file
+		$log_file = WP_CONTENT_DIR . '/geekbench-init.log';
+		file_put_contents( $log_file, date( '[Y-m-d H:i:s] ' ) . "[Shortcode] Constructor called\n", FILE_APPEND );
 
-        // Register AJAX handlers for frontend
-        error_log('[Shortcode] Registering AJAX handlers...');
-        file_put_contents($log_file, date('[Y-m-d H:i:s] ') . "[Shortcode] Registering AJAX handlers...\n", FILE_APPEND);
+		// Register shortcode
+		add_shortcode( 'geekbench_results', [ $this, 'render' ] );
+		file_put_contents( $log_file, date( '[Y-m-d H:i:s] ' ) . "[Shortcode] Shortcode registered\n", FILE_APPEND );
 
-        add_action('wp_ajax_nopriv_geekbench_scraper_fetch', [$this, 'ajax_fetch_results']);
-        add_action('wp_ajax_geekbench_scraper_fetch', [$this, 'ajax_fetch_results']);
+		// ============================================================================
+		// CRITICAL: AJAX Handler Registration for Frontend Search
+		// ============================================================================
+		// DO NOT REMOVE OR MODIFY THESE HANDLERS WITHOUT TESTING FRONTEND SEARCH!
+		//
+		// These handlers are ESSENTIAL for frontend shortcode search to work:
+		//   - wp_ajax_nopriv_geekbench_scraper_fetch: For non-logged-in users
+		//   - wp_ajax_geekbench_scraper_fetch: For logged-in users
+		//
+		// IMPORTANT: The Admin class does NOT register these handlers (see Admin.php)
+		// to prevent conflicts. The Shortcode class is the ONLY place where
+		// geekbench_scraper_fetch is registered.
+		//
+		// TESTING: After any changes, test:
+		//   1. Frontend search while logged OUT
+		//   2. Frontend search while logged IN
+		//   3. Admin interface search (should still work)
+		// ============================================================================
 
-        error_log('[Shortcode] AJAX handlers registered');
-        file_put_contents($log_file, date('[Y-m-d H:i:s] ') . "[Shortcode] AJAX handlers registered\n", FILE_APPEND);
+		// Register AJAX handlers for frontend
+		error_log( '[Shortcode] Registering AJAX handlers...' );
+		file_put_contents( $log_file, date( '[Y-m-d H:i:s] ' ) . "[Shortcode] Registering AJAX handlers...\n", FILE_APPEND );
 
-        // Verify handlers are registered
-        global $wp_filter;
-        $has_nopriv = isset($wp_filter['wp_ajax_nopriv_geekbench_scraper_fetch']);
-        $has_priv = isset($wp_filter['wp_ajax_geekbench_scraper_fetch']);
-        file_put_contents($log_file, date('[Y-m-d H:i:s] ') . "[Shortcode] Handler check - nopriv: " . ($has_nopriv ? 'YES' : 'NO') . ", priv: " . ($has_priv ? 'YES' : 'NO') . "\n", FILE_APPEND);
-    }
-    
-    /**
-     * Render shortcode output
-     *
-     * @since 1.0.0
-     *
-     * @param array $atts Shortcode attributes
-     * @return string HTML output
-     */
-    public function render($atts) {
-        // Parse attributes with defaults
-        $atts = shortcode_atts([
-            'default' => 'Apple M4',
-            'query' => '', // Deprecated, use 'default' instead
-            'limit' => 25,
-            'show_search' => true,
-            'show_refresh' => false,
-            'table_class' => 'geekbench-table',
-            'columns' => 'all',
-        ], $atts, 'geekbench_results');
+		add_action( 'wp_ajax_nopriv_geekbench_scraper_fetch', [ $this, 'ajax_fetch_results' ] );
+		add_action( 'wp_ajax_geekbench_scraper_fetch', [ $this, 'ajax_fetch_results' ] );
 
-        // Sanitize attributes
-        // Use 'default' if provided, otherwise fall back to 'query' for backwards compatibility
-        $query = !empty($atts['default']) ? sanitize_text_field($atts['default']) : sanitize_text_field($atts['query']);
+		error_log( '[Shortcode] AJAX handlers registered' );
+		file_put_contents( $log_file, date( '[Y-m-d H:i:s] ' ) . "[Shortcode] AJAX handlers registered\n", FILE_APPEND );
 
-        // If still empty, use global default
-        if (empty($query)) {
-            $query = get_option('geekbench_scraper_default_query', 'Apple M4');
-        }
+		// Verify handlers are registered
+		global $wp_filter;
+		$has_nopriv = isset( $wp_filter['wp_ajax_nopriv_geekbench_scraper_fetch'] );
+		$has_priv   = isset( $wp_filter['wp_ajax_geekbench_scraper_fetch'] );
+		file_put_contents( $log_file, date( '[Y-m-d H:i:s] ' ) . '[Shortcode] Handler check - nopriv: ' . ( $has_nopriv ? 'YES' : 'NO' ) . ', priv: ' . ( $has_priv ? 'YES' : 'NO' ) . "\n", FILE_APPEND );
+	}
 
-        $limit = absint($atts['limit']);
-        $show_search = filter_var($atts['show_search'], FILTER_VALIDATE_BOOLEAN);
-        $show_refresh = filter_var($atts['show_refresh'], FILTER_VALIDATE_BOOLEAN);
-        $table_class = sanitize_html_class($atts['table_class']);
-        $columns = sanitize_text_field($atts['columns']);
+	/**
+	 * Render shortcode output
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param array $atts Shortcode attributes
+	 * @return string HTML output
+	 */
+	public function render( $atts ) {
+		// Parse attributes with defaults
+		$atts = shortcode_atts(
+			[
+				'default'      => 'Apple M4',
+				'query'        => '', // Deprecated, use 'default' instead
+				'limit'        => 25,
+				'show_search'  => true,
+				'show_refresh' => false,
+				'table_class'  => 'geekbench-table',
+				'columns'      => 'all',
+			],
+			$atts,
+			'geekbench_results'
+		);
 
-        // Limit max results
-        if ($limit > 30) {
-            $limit = 30;
-        }
+		// Sanitize attributes
+		// Use 'default' if provided, otherwise fall back to 'query' for backwards compatibility
+		$query = ! empty( $atts['default'] ) ? sanitize_text_field( $atts['default'] ) : sanitize_text_field( $atts['query'] );
 
-        // Fetch results for initial page load
-        $results = [];
-        $error = null;
+		// If still empty, use global default
+		if ( empty( $query ) ) {
+			$query = get_option( 'geekbench_scraper_default_query', 'Apple M4' );
+		}
 
-        try {
-            $results = $this->scraper->fetch($query);
+		$limit        = absint( $atts['limit'] );
+		$show_search  = filter_var( $atts['show_search'], FILTER_VALIDATE_BOOLEAN );
+		$show_refresh = filter_var( $atts['show_refresh'], FILTER_VALIDATE_BOOLEAN );
+		$table_class  = sanitize_html_class( $atts['table_class'] );
+		$columns      = sanitize_text_field( $atts['columns'] );
 
-            // Limit results
-            if ($limit > 0 && count($results) > $limit) {
-                $results = array_slice($results, 0, $limit);
-            }
-        } catch (\Exception $e) {
-            $error = $e->getMessage();
-        }
+		// Limit max results
+		if ( $limit > 30 ) {
+			$limit = 30;
+		}
 
-        // Start output buffering
-        ob_start();
+		// Fetch results for initial page load
+		$results = [];
+		$error   = null;
 
-        // Include frontend template
-        include GEEKBENCH_SCRAPER_PLUGIN_DIR . 'templates/frontend-shortcode.php';
+		try {
+			$results = $this->scraper->fetch( $query );
 
-        return ob_get_clean();
-    }
-    
-    /**
-     * AJAX handler for fetching results (frontend)
-     *
-     * @since 1.0.0
-     * @return void
-     */
-    public function ajax_fetch_results() {
-        // Log the start of the AJAX request
-        $log_file = WP_CONTENT_DIR . '/geekbench-ajax.log';
-        file_put_contents($log_file, date('[Y-m-d H:i:s] ') . "===========================================\n", FILE_APPEND);
-        file_put_contents($log_file, date('[Y-m-d H:i:s] ') . "[AJAX] *** geekbench_scraper_fetch CALLED ***\n", FILE_APPEND);
-        file_put_contents($log_file, date('[Y-m-d H:i:s] ') . "[AJAX] POST data: " . print_r($_POST, true) . "\n", FILE_APPEND);
-        file_put_contents($log_file, date('[Y-m-d H:i:s] ') . "===========================================\n", FILE_APPEND);
+			// Limit results
+			if ( $limit > 0 && count( $results ) > $limit ) {
+				$results = array_slice( $results, 0, $limit );
+			}
+		} catch ( \Exception $e ) {
+			$error = $e->getMessage();
+		}
 
-        error_log('===========================================');
-        error_log('[AJAX] *** geekbench_scraper_fetch CALLED ***');
-        error_log('[AJAX] geekbench_scraper_fetch started');
-        error_log('[AJAX] POST data: ' . print_r($_POST, true));
-        error_log('===========================================');
+		// Start output buffering
+		ob_start();
 
-        // Get query parameter
-        $query = isset($_POST['query']) ? sanitize_text_field($_POST['query']) : '';
-        $limit = isset($_POST['limit']) ? absint($_POST['limit']) : 25;
+		// Include frontend template
+		include GEEKBENCH_SCRAPER_PLUGIN_DIR . 'templates/frontend-shortcode.php';
 
-        if (empty($query)) {
-            error_log('[AJAX] Error: Empty query');
-            wp_send_json_error([
-                'message' => __('Search query is required', 'geekbench-scraper'),
-            ]);
-        }
+		return ob_get_clean();
+	}
 
-        // Server-side throttling check
-        error_log('[AJAX] Checking throttle limit...');
-        $throttle_check = $this->check_throttle_limit();
-        error_log('[AJAX] Throttle check result: ' . print_r($throttle_check, true));
+	/**
+	 * AJAX handler for fetching results (frontend)
+	 *
+	 * @since 1.0.0
+	 * @return void
+	 */
+	public function ajax_fetch_results() {
+		// Log the start of the AJAX request
+		$log_file = WP_CONTENT_DIR . '/geekbench-ajax.log';
+		file_put_contents( $log_file, date( '[Y-m-d H:i:s] ' ) . "===========================================\n", FILE_APPEND );
+		file_put_contents( $log_file, date( '[Y-m-d H:i:s] ' ) . "[AJAX] *** geekbench_scraper_fetch CALLED ***\n", FILE_APPEND );
+		file_put_contents( $log_file, date( '[Y-m-d H:i:s] ' ) . '[AJAX] POST data: ' . print_r( $_POST, true ) . "\n", FILE_APPEND );
+		file_put_contents( $log_file, date( '[Y-m-d H:i:s] ' ) . "===========================================\n", FILE_APPEND );
 
-        // TEMPORARY: Disable throttling for debugging
-        $throttle_check['requires_captcha'] = false;
-        error_log('[AJAX] Throttling DISABLED for debugging');
+		error_log( '===========================================' );
+		error_log( '[AJAX] *** geekbench_scraper_fetch CALLED ***' );
+		error_log( '[AJAX] geekbench_scraper_fetch started' );
+		error_log( '[AJAX] POST data: ' . print_r( $_POST, true ) );
+		error_log( '===========================================' );
 
-        if ($throttle_check['requires_captcha']) {
-            error_log('[AJAX] reCAPTCHA required');
+		// Get query parameter
+		$query = isset( $_POST['query'] ) ? sanitize_text_field( $_POST['query'] ) : '';
+		$limit = isset( $_POST['limit'] ) ? absint( $_POST['limit'] ) : 25;
 
-            // reCAPTCHA is required after 5 searches
-            $recaptcha_enabled = get_option('geekbench_recaptcha_enabled', 0);
-            error_log('[AJAX] reCAPTCHA enabled: ' . ($recaptcha_enabled ? 'yes' : 'no'));
+		if ( empty( $query ) ) {
+			error_log( '[AJAX] Error: Empty query' );
+			wp_send_json_error(
+				[
+					'message' => __( 'Search query is required', 'geekbench-scraper' ),
+				]
+			);
+		}
 
-            if (!$recaptcha_enabled) {
-                // reCAPTCHA not enabled but limit reached
-                error_log('[AJAX] Error: reCAPTCHA not enabled but limit reached');
-                wp_send_json_error([
-                    'message' => __('Search limit reached. Please enable reCAPTCHA in settings to continue.', 'geekbench-scraper'),
-                ]);
-            }
+		// Server-side throttling check
+		error_log( '[AJAX] Checking throttle limit...' );
+		$throttle_check = $this->check_throttle_limit();
+		error_log( '[AJAX] Throttle check result: ' . print_r( $throttle_check, true ) );
 
-            $recaptcha_response = isset($_POST['g-recaptcha-response']) ? $_POST['g-recaptcha-response'] : '';
-            error_log('[AJAX] reCAPTCHA response: ' . (empty($recaptcha_response) ? 'empty' : 'present'));
+		// TEMPORARY: Disable throttling for debugging
+		$throttle_check['requires_captcha'] = false;
+		error_log( '[AJAX] Throttling DISABLED for debugging' );
 
-            if (empty($recaptcha_response)) {
-                error_log('[AJAX] Error: reCAPTCHA response empty');
-                wp_send_json_error([
-                    'message' => __('Please complete the reCAPTCHA verification to continue searching.', 'geekbench-scraper'),
-                    'requires_captcha' => true,
-                ]);
-            }
+		if ( $throttle_check['requires_captcha'] ) {
+			error_log( '[AJAX] reCAPTCHA required' );
 
-            // Verify reCAPTCHA
-            error_log('[AJAX] Verifying reCAPTCHA...');
-            if (!$this->verify_recaptcha($recaptcha_response)) {
-                error_log('[AJAX] Error: reCAPTCHA verification failed');
-                wp_send_json_error([
-                    'message' => __('reCAPTCHA verification failed. Please try again.', 'geekbench-scraper'),
-                    'requires_captcha' => true,
-                ]);
-            }
+			// reCAPTCHA is required after 5 searches
+			$recaptcha_enabled = get_option( 'geekbench_recaptcha_enabled', 0 );
+			error_log( '[AJAX] reCAPTCHA enabled: ' . ( $recaptcha_enabled ? 'yes' : 'no' ) );
 
-            error_log('[AJAX] reCAPTCHA verified successfully');
-            // reCAPTCHA verified - reset counter for this IP
-            $this->reset_throttle_count();
-        } else {
-            error_log('[AJAX] reCAPTCHA not required, incrementing count');
-            // Increment search count for this IP
-            $this->increment_throttle_count();
-        }
+			if ( ! $recaptcha_enabled ) {
+				// reCAPTCHA not enabled but limit reached
+				error_log( '[AJAX] Error: reCAPTCHA not enabled but limit reached' );
+				wp_send_json_error(
+					[
+						'message' => __( 'Search limit reached. Please enable reCAPTCHA in settings to continue.', 'geekbench-scraper' ),
+					]
+				);
+			}
 
-        // Limit max results
-        if ($limit > 30) {
-            $limit = 30;
-        }
+			$recaptcha_response = isset( $_POST['g-recaptcha-response'] ) ? $_POST['g-recaptcha-response'] : '';
+			error_log( '[AJAX] reCAPTCHA response: ' . ( empty( $recaptcha_response ) ? 'empty' : 'present' ) );
 
-        try {
-            error_log('[AJAX] Fetching results for query: ' . $query);
-            // Fetch results
-            $results = $this->scraper->fetch($query);
-            error_log('[AJAX] Fetched ' . count($results) . ' results');
+			if ( empty( $recaptcha_response ) ) {
+				error_log( '[AJAX] Error: reCAPTCHA response empty' );
+				wp_send_json_error(
+					[
+						'message'          => __( 'Please complete the reCAPTCHA verification to continue searching.', 'geekbench-scraper' ),
+						'requires_captcha' => true,
+					]
+				);
+			}
 
-            // Limit results
-            if ($limit > 0 && count($results) > $limit) {
-                $results = array_slice($results, 0, $limit);
-                error_log('[AJAX] Limited to ' . $limit . ' results');
-            }
+			// Verify reCAPTCHA
+			error_log( '[AJAX] Verifying reCAPTCHA...' );
+			if ( ! $this->verify_recaptcha( $recaptcha_response ) ) {
+				error_log( '[AJAX] Error: reCAPTCHA verification failed' );
+				wp_send_json_error(
+					[
+						'message'          => __( 'reCAPTCHA verification failed. Please try again.', 'geekbench-scraper' ),
+						'requires_captcha' => true,
+					]
+				);
+			}
 
-            // Render table HTML
-            error_log('[AJAX] Rendering table HTML...');
-            ob_start();
-            include GEEKBENCH_SCRAPER_PLUGIN_DIR . 'templates/results-table.php';
-            $html = ob_get_clean();
-            error_log('[AJAX] HTML rendered, length: ' . strlen($html) . ' bytes');
+			error_log( '[AJAX] reCAPTCHA verified successfully' );
+			// reCAPTCHA verified - reset counter for this IP
+			$this->reset_throttle_count();
+		} else {
+			error_log( '[AJAX] reCAPTCHA not required, incrementing count' );
+			// Increment search count for this IP
+			$this->increment_throttle_count();
+		}
 
-            error_log('[AJAX] Sending success response');
-            wp_send_json_success([
-                'results' => $results,
-                'html' => $html,
-                'count' => count($results),
-            ]);
+		// Limit max results
+		if ( $limit > 30 ) {
+			$limit = 30;
+		}
 
-        } catch (\Exception $e) {
-            error_log('[AJAX] Exception: ' . $e->getMessage());
-            wp_send_json_error([
-                'message' => $e->getMessage(),
-            ]);
-        }
+		try {
+			error_log( '[AJAX] Fetching results for query: ' . $query );
+			// Fetch results
+			$results = $this->scraper->fetch( $query );
+			error_log( '[AJAX] Fetched ' . count( $results ) . ' results' );
 
-        error_log('[AJAX] ajax_fetch_results completed');
-    }
+			// Limit results
+			if ( $limit > 0 && count( $results ) > $limit ) {
+				$results = array_slice( $results, 0, $limit );
+				error_log( '[AJAX] Limited to ' . $limit . ' results' );
+			}
 
-    /**
-     * Verify reCAPTCHA response
-     *
-     * @since 1.1.1
-     * @param string $response reCAPTCHA response token
-     * @return bool True if verification successful
-     */
-    private function verify_recaptcha($response) {
-        $secret_key = get_option('geekbench_recaptcha_secret_key', '');
+			// Render table HTML
+			error_log( '[AJAX] Rendering table HTML...' );
+			ob_start();
+			include GEEKBENCH_SCRAPER_PLUGIN_DIR . 'templates/results-table.php';
+			$html = ob_get_clean();
+			error_log( '[AJAX] HTML rendered, length: ' . strlen( $html ) . ' bytes' );
 
-        if (empty($secret_key)) {
-            return false;
-        }
+			error_log( '[AJAX] Sending success response' );
+			wp_send_json_success(
+				[
+					'results' => $results,
+					'html'    => $html,
+					'count'   => count( $results ),
+				]
+			);
 
-        $verify_url = 'https://www.google.com/recaptcha/api/siteverify';
+		} catch ( \Exception $e ) {
+			error_log( '[AJAX] Exception: ' . $e->getMessage() );
+			wp_send_json_error(
+				[
+					'message' => $e->getMessage(),
+				]
+			);
+		}
 
-        $verify_response = wp_remote_post($verify_url, [
-            'body' => [
-                'secret' => $secret_key,
-                'response' => $response,
-                'remoteip' => isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '',
-            ],
-        ]);
+		error_log( '[AJAX] ajax_fetch_results completed' );
+	}
 
-        if (is_wp_error($verify_response)) {
-            return false;
-        }
+	/**
+	 * Verify reCAPTCHA response
+	 *
+	 * @since 1.1.1
+	 * @param string $response reCAPTCHA response token
+	 * @return bool True if verification successful
+	 */
+	private function verify_recaptcha( $response ) {
+		$secret_key = get_option( 'geekbench_recaptcha_secret_key', '' );
 
-        $body = wp_remote_retrieve_body($verify_response);
-        $result = json_decode($body, true);
+		if ( empty( $secret_key ) ) {
+			return false;
+		}
 
-        return isset($result['success']) && $result['success'] === true;
-    }
+		$verify_url = 'https://www.google.com/recaptcha/api/siteverify';
 
-    /**
-     * Get user's IP address
-     *
-     * @since 1.3.0
-     * @return string IP address
-     */
-    private function get_user_ip() {
-        // Check for proxy headers first
-        $ip_keys = [
-            'HTTP_CF_CONNECTING_IP', // Cloudflare
-            'HTTP_X_FORWARDED_FOR',  // Proxy
-            'HTTP_X_REAL_IP',        // Nginx proxy
-            'REMOTE_ADDR',           // Direct connection
-        ];
+		$verify_response = wp_remote_post(
+			$verify_url,
+			[
+				'body' => [
+					'secret'   => $secret_key,
+					'response' => $response,
+					'remoteip' => isset( $_SERVER['REMOTE_ADDR'] ) ? $_SERVER['REMOTE_ADDR'] : '',
+				],
+			]
+		);
 
-        foreach ($ip_keys as $key) {
-            if (isset($_SERVER[$key]) && !empty($_SERVER[$key])) {
-                $ip = $_SERVER[$key];
+		if ( is_wp_error( $verify_response ) ) {
+			return false;
+		}
 
-                // Handle comma-separated IPs (X-Forwarded-For can have multiple)
-                if (strpos($ip, ',') !== false) {
-                    $ip_list = explode(',', $ip);
-                    $ip = trim($ip_list[0]);
-                }
+		$body   = wp_remote_retrieve_body( $verify_response );
+		$result = json_decode( $body, true );
 
-                // Validate IP
-                if (filter_var($ip, FILTER_VALIDATE_IP)) {
-                    return $ip;
-                }
-            }
-        }
+		return isset( $result['success'] ) && $result['success'] === true;
+	}
 
-        return '0.0.0.0'; // Fallback
-    }
+	/**
+	 * Get user's IP address
+	 *
+	 * @since 1.3.0
+	 * @return string IP address
+	 */
+	private function get_user_ip() {
+		// Check for proxy headers first
+		$ip_keys = [
+			'HTTP_CF_CONNECTING_IP', // Cloudflare
+			'HTTP_X_FORWARDED_FOR',  // Proxy
+			'HTTP_X_REAL_IP',        // Nginx proxy
+			'REMOTE_ADDR',           // Direct connection
+		];
 
-    /**
-     * Get transient key for IP-based throttling
-     *
-     * @since 1.3.0
-     * @return string Transient key
-     */
-    private function get_throttle_transient_key() {
-        $ip = $this->get_user_ip();
-        return 'geekbench_throttle_' . md5($ip);
-    }
+		foreach ( $ip_keys as $key ) {
+			if ( isset( $_SERVER[ $key ] ) && ! empty( $_SERVER[ $key ] ) ) {
+				$ip = $_SERVER[ $key ];
 
-    /**
-     * Check if user has reached throttle limit
-     *
-     * @since 1.3.0
-     * @return array Array with 'count' and 'requires_captcha' keys
-     */
-    private function check_throttle_limit() {
-        $transient_key = $this->get_throttle_transient_key();
-        $search_count = get_transient($transient_key);
+				// Handle comma-separated IPs (X-Forwarded-For can have multiple)
+				if ( strpos( $ip, ',' ) !== false ) {
+					$ip_list = explode( ',', $ip );
+					$ip      = trim( $ip_list[0] );
+				}
 
-        // Default to 0 if no transient exists
-        if ($search_count === false) {
-            $search_count = 0;
-        }
+				// Validate IP
+				if ( filter_var( $ip, FILTER_VALIDATE_IP ) ) {
+					return $ip;
+				}
+			}
+		}
 
-        // Maximum searches before requiring CAPTCHA
-        $max_searches = 5;
+		return '0.0.0.0'; // Fallback
+	}
 
-        return [
-            'count' => intval($search_count),
-            'requires_captcha' => intval($search_count) >= $max_searches,
-        ];
-    }
+	/**
+	 * Get transient key for IP-based throttling
+	 *
+	 * @since 1.3.0
+	 * @return string Transient key
+	 */
+	private function get_throttle_transient_key() {
+		$ip = $this->get_user_ip();
+		return 'geekbench_throttle_' . md5( $ip );
+	}
 
-    /**
-     * Increment throttle count for current IP
-     *
-     * @since 1.3.0
-     * @return void
-     */
-    private function increment_throttle_count() {
-        $transient_key = $this->get_throttle_transient_key();
-        $search_count = get_transient($transient_key);
+	/**
+	 * Check if user has reached throttle limit
+	 *
+	 * @since 1.3.0
+	 * @return array Array with 'count' and 'requires_captcha' keys
+	 */
+	private function check_throttle_limit() {
+		$transient_key = $this->get_throttle_transient_key();
+		$search_count  = get_transient( $transient_key );
 
-        if ($search_count === false) {
-            $search_count = 0;
-        }
+		// Default to 0 if no transient exists
+		if ( $search_count === false ) {
+			$search_count = 0;
+		}
 
-        $search_count++;
+		// Maximum searches before requiring CAPTCHA
+		$max_searches = 5;
 
-        // Store for 5 minutes (300 seconds)
-        set_transient($transient_key, $search_count, 5 * MINUTE_IN_SECONDS);
-    }
+		return [
+			'count'            => intval( $search_count ),
+			'requires_captcha' => intval( $search_count ) >= $max_searches,
+		];
+	}
 
-    /**
-     * Reset throttle count for current IP
-     *
-     * @since 1.3.0
-     * @return void
-     */
-    private function reset_throttle_count() {
-        $transient_key = $this->get_throttle_transient_key();
-        delete_transient($transient_key);
-    }
+	/**
+	 * Increment throttle count for current IP
+	 *
+	 * @since 1.3.0
+	 * @return void
+	 */
+	private function increment_throttle_count() {
+		$transient_key = $this->get_throttle_transient_key();
+		$search_count  = get_transient( $transient_key );
+
+		if ( $search_count === false ) {
+			$search_count = 0;
+		}
+
+		++$search_count;
+
+		// Store for 5 minutes (300 seconds)
+		set_transient( $transient_key, $search_count, 5 * MINUTE_IN_SECONDS );
+	}
+
+	/**
+	 * Reset throttle count for current IP
+	 *
+	 * @since 1.3.0
+	 * @return void
+	 */
+	private function reset_throttle_count() {
+		$transient_key = $this->get_throttle_transient_key();
+		delete_transient( $transient_key );
+	}
 }
-
