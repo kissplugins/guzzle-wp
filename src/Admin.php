@@ -18,651 +18,715 @@ namespace GeekbenchScraper;
  * @since 1.0.0
  */
 class Admin {
-    
-    /**
-     * Scraper instance
-     *
-     * @var Scraper
-     */
-    private $scraper;
-    
-    /**
-     * Constructor
-     *
-     * @since 1.0.0
-     * @param Scraper $scraper Scraper instance
-     */
-    public function __construct(Scraper $scraper) {
-        $this->scraper = $scraper;
-        
-        // Add admin menu
-        add_action('admin_menu', [$this, 'add_admin_menu']);
-
-        // ============================================================================
-        // CRITICAL: AJAX Handler Registration
-        // ============================================================================
-        // DO NOT register wp_ajax_geekbench_scraper_fetch here!
-        //
-        // REASON: The Shortcode class handles this action for BOTH:
-        //   - wp_ajax_geekbench_scraper_fetch (logged-in users)
-        //   - wp_ajax_nopriv_geekbench_scraper_fetch (non-logged-in users)
-        //
-        // If we register it here too, it will create a conflict during frontend
-        // AJAX requests, causing the search to fail with HTTP 403 or -1 errors.
-        //
-        // The Admin class is initialized for:
-        //   - Regular admin pages (is_admin() && !wp_doing_ajax())
-        //   - Admin AJAX requests (wp_doing_ajax() && current_user_can('manage_options'))
-        //
-        // This ensures admin-specific AJAX handlers (self-test, etc.) work correctly
-        // while preventing conflicts with frontend AJAX handlers.
-        // ============================================================================
-
-        // Register AJAX handlers (admin-only actions)
-        add_action('wp_ajax_geekbench_scraper_refresh', [$this, 'ajax_refresh_results']);
-        add_action('wp_ajax_geekbench_scraper_save_translations', [$this, 'ajax_save_translations']);
-        add_action('wp_ajax_geekbench_self_test', [$this, 'ajax_self_test']);
-        add_action('wp_ajax_geekbench_test_table_sorting', [$this, 'ajax_test_table_sorting']);
-    }
-    
-    /**
-     * Add admin menu item
-     *
-     * @since 1.0.0
-     * @return void
-     */
-    public function add_admin_menu() {
-        // Main page
-        add_submenu_page(
-            'tools.php',
-            __('Geekbench Scraper', 'geekbench-scraper'),
-            __('Geekbench Scraper', 'geekbench-scraper'),
-            'manage_options',
-            'geekbench-scraper',
-            [$this, 'render_admin_page']
-        );
-
-        // Settings page
-        add_submenu_page(
-            'tools.php',
-            __('Geekbench Settings', 'geekbench-scraper'),
-            __('Geekbench Settings', 'geekbench-scraper'),
-            'manage_options',
-            'geekbench-scraper-settings',
-            [$this, 'render_settings_page']
-        );
-    }
-    
-    /**
-     * Render admin page
-     *
-     * @since 1.0.0
-     * @return void
-     */
-    public function render_admin_page() {
-        // Check user capabilities
-        if (!current_user_can('manage_options')) {
-            wp_die(__('You do not have sufficient permissions to access this page.', 'geekbench-scraper'));
-        }
-        
-        // Get default query
-        $default_query = get_option('geekbench_scraper_default_query', 'iPhone18');
-        
-        // Get current query from request or use default
-        $current_query = isset($_GET['query']) ? sanitize_text_field($_GET['query']) : $default_query;
-        
-        // Fetch results
-        $results = [];
-        $error = null;
-        
-        if (!empty($current_query)) {
-            try {
-                $results = $this->scraper->fetch($current_query);
-            } catch (\Exception $e) {
-                $error = $e->getMessage();
-            }
-        }
-        
-        // Include template
-        include GEEKBENCH_SCRAPER_PLUGIN_DIR . 'templates/admin-page.php';
-    }
-    
-    /**
-     * AJAX handler for fetching results
-     *
-     * @since 1.0.0
-     * @return void
-     */
-    public function ajax_fetch_results() {
-        // Verify nonce
-        check_ajax_referer('geekbench_scraper_nonce', 'nonce');
-        
-        // Check capabilities
-        if (!current_user_can('manage_options')) {
-            wp_send_json_error([
-                'message' => __('Insufficient permissions', 'geekbench-scraper'),
-            ]);
-        }
-        
-        // Get query parameter
-        $query = isset($_POST['query']) ? sanitize_text_field($_POST['query']) : '';
-        
-        if (empty($query)) {
-            wp_send_json_error([
-                'message' => __('Search query is required', 'geekbench-scraper'),
-            ]);
-        }
-        
-        try {
-            // Fetch results
-            $results = $this->scraper->fetch($query);
-            
-            // Render table HTML
-            ob_start();
-            include GEEKBENCH_SCRAPER_PLUGIN_DIR . 'templates/results-table.php';
-            $html = ob_get_clean();
-            
-            wp_send_json_success([
-                'results' => $results,
-                'html' => $html,
-                'count' => count($results),
-            ]);
-            
-        } catch (\Exception $e) {
-            wp_send_json_error([
-                'message' => $e->getMessage(),
-            ]);
-        }
-    }
-    
-    /**
-     * AJAX handler for refreshing results (bypass cache)
-     *
-     * @since 1.0.0
-     * @return void
-     */
-    public function ajax_refresh_results() {
-        // Verify nonce
-        check_ajax_referer('geekbench_scraper_nonce', 'nonce');
-        
-        // Check capabilities
-        if (!current_user_can('manage_options')) {
-            wp_send_json_error([
-                'message' => __('Insufficient permissions', 'geekbench-scraper'),
-            ]);
-        }
-        
-        // Get query parameter
-        $query = isset($_POST['query']) ? sanitize_text_field($_POST['query']) : '';
-        
-        if (empty($query)) {
-            wp_send_json_error([
-                'message' => __('Search query is required', 'geekbench-scraper'),
-            ]);
-        }
-        
-        try {
-            // Clear cache first
-            $this->scraper->clear_cache($query);
-            
-            // Fetch fresh results
-            $results = $this->scraper->fetch($query, true);
-            
-            // Render table HTML
-            ob_start();
-            include GEEKBENCH_SCRAPER_PLUGIN_DIR . 'templates/results-table.php';
-            $html = ob_get_clean();
-            
-            wp_send_json_success([
-                'results' => $results,
-                'html' => $html,
-                'count' => count($results),
-                'message' => __('Results refreshed successfully', 'geekbench-scraper'),
-            ]);
-            
-        } catch (\Exception $e) {
-            wp_send_json_error([
-                'message' => $e->getMessage(),
-            ]);
-        }
-    }
-
-    /**
-     * Render settings page
-     *
-     * @since 1.1.0
-     * @return void
-     */
-    public function render_settings_page() {
-        // Check user capabilities
-        if (!current_user_can('manage_options')) {
-            wp_die(__('You do not have sufficient permissions to access this page.', 'geekbench-scraper'));
-        }
-
-        // Handle frontend settings form submission
-        if (isset($_POST['save_frontend_settings']) && check_admin_referer('geekbench_frontend_settings_nonce')) {
-            $search_hint = isset($_POST['search_hint']) ? sanitize_text_field(wp_unslash($_POST['search_hint'])) : 'Search for any device';
-            update_option('geekbench_search_hint', $search_hint);
-            echo '<div class="notice notice-success is-dismissible"><p>' . __('Frontend settings saved successfully!', 'geekbench-scraper') . '</p></div>';
-        }
-
-        // Handle reCAPTCHA settings form submission
-        if (isset($_POST['save_recaptcha_settings']) && check_admin_referer('geekbench_recaptcha_settings_nonce')) {
-            $recaptcha_enabled = isset($_POST['recaptcha_enabled']) ? 1 : 0;
-            $recaptcha_site_key = isset($_POST['recaptcha_site_key']) ? sanitize_text_field(wp_unslash($_POST['recaptcha_site_key'])) : '';
-            $recaptcha_secret_key = isset($_POST['recaptcha_secret_key']) ? sanitize_text_field(wp_unslash($_POST['recaptcha_secret_key'])) : '';
-
-            update_option('geekbench_recaptcha_enabled', $recaptcha_enabled);
-            update_option('geekbench_recaptcha_site_key', $recaptcha_site_key);
-            update_option('geekbench_recaptcha_secret_key', $recaptcha_secret_key);
-
-            echo '<div class="notice notice-success is-dismissible"><p>' . __('reCAPTCHA settings saved successfully!', 'geekbench-scraper') . '</p></div>';
-        }
-
-        // Handle translations form submission
-        if (isset($_POST['geekbench_save_translations']) && check_admin_referer('geekbench_translations_nonce')) {
-            $translations = [];
-
-            if (isset($_POST['system_names']) && isset($_POST['display_names'])) {
-                // Unslash arrays first, then sanitize
-                $system_names = array_map('sanitize_text_field', array_map('wp_unslash', $_POST['system_names']));
-                $display_names = array_map('sanitize_text_field', array_map('wp_unslash', $_POST['display_names']));
-
-                foreach ($system_names as $index => $system_name) {
-                    if (!empty($system_name) && !empty($display_names[$index])) {
-                        $translations[$system_name] = $display_names[$index];
-                    }
-                }
-            }
-
-            update_option('geekbench_scraper_name_translations', $translations);
-            echo '<div class="notice notice-success is-dismissible"><p>' . __('Translations saved successfully!', 'geekbench-scraper') . '</p></div>';
-        }
-
-        // Get current translations
-        $translations = get_option('geekbench_scraper_name_translations', []);
-
-        // Include settings template
-        include GEEKBENCH_SCRAPER_PLUGIN_DIR . 'templates/settings-page.php';
-    }
-
-    /**
-     * AJAX handler for saving translations
-     *
-     * @since 1.1.0
-     * @return void
-     */
-    public function ajax_save_translations() {
-        // Verify nonce
-        check_ajax_referer('geekbench_scraper_nonce', 'nonce');
-
-        // Check permissions
-        if (!current_user_can('manage_options')) {
-            wp_send_json_error(['message' => __('Insufficient permissions', 'geekbench-scraper')]);
-            return;
-        }
-
-        $translations = isset($_POST['translations']) ? $_POST['translations'] : [];
-        $sanitized = [];
-
-        foreach ($translations as $system_name => $display_name) {
-            $system_name = sanitize_text_field($system_name);
-            $display_name = sanitize_text_field($display_name);
-
-            if (!empty($system_name) && !empty($display_name)) {
-                $sanitized[$system_name] = $display_name;
-            }
-        }
-
-        update_option('geekbench_scraper_name_translations', $sanitized);
-
-        wp_send_json_success([
-            'message' => __('Translations saved successfully', 'geekbench-scraper'),
-            'count' => count($sanitized),
-        ]);
-    }
-
-    /**
-     * Handle self-test AJAX request
-     *
-     * @since 1.1.1
-     * @return void
-     */
-    public function ajax_self_test() {
-        // Verify nonce
-        check_ajax_referer('geekbench_self_test', 'nonce');
-
-        // Check permissions
-        if (!current_user_can('manage_options')) {
-            wp_send_json_error([
-                'message' => __('Insufficient permissions', 'geekbench-scraper'),
-            ]);
-        }
-
-        $test = isset($_POST['test']) ? sanitize_text_field($_POST['test']) : '';
-
-        switch ($test) {
-            case 'php_version':
-                $this->test_php_version();
-                break;
-
-            case 'guzzle_loaded':
-                $this->test_guzzle_loaded();
-                break;
-
-            case 'domcrawler_loaded':
-                $this->test_domcrawler_loaded();
-                break;
-
-            case 'wordpress_functions':
-                $this->test_wordpress_functions();
-                break;
-
-            case 'cache_system':
-                $this->test_cache_system();
-                break;
-
-            case 'geekbench_connectivity':
-                $this->test_geekbench_connectivity();
-                break;
-
-            case 'scraper_logic':
-                $this->test_scraper_logic();
-                break;
-
-            case 'html_parser':
-                $this->test_html_parser();
-                break;
-
-            case 'frontend_ajax':
-                $this->test_frontend_ajax();
-                break;
-
-            default:
-                wp_send_json_error([
-                    'message' => __('Unknown test', 'geekbench-scraper'),
-                ]);
-        }
-    }
-
-    /**
-     * Test PHP version
-     *
-     * @since 1.1.1
-     * @return void
-     */
-    private function test_php_version() {
-        $version = phpversion();
-        $required = '7.4';
-
-        if (version_compare($version, $required, '>=')) {
-            wp_send_json_success([
-                'message' => 'PHP version is compatible',
-                'details' => sprintf('Current: %s (Required: %s+)', $version, $required),
-            ]);
-        } else {
-            wp_send_json_error([
-                'message' => 'PHP version is too old',
-                'details' => sprintf('Current: %s (Required: %s+)', $version, $required),
-            ]);
-        }
-    }
-
-    /**
-     * Test if Guzzle is loaded
-     *
-     * @since 1.1.1
-     * @return void
-     */
-    private function test_guzzle_loaded() {
-        if (class_exists('GuzzleHttp\\Client')) {
-            $reflection = new \ReflectionClass('GuzzleHttp\\Client');
-            $version = \GuzzleHttp\Client::MAJOR_VERSION ?? 'Unknown';
-
-            wp_send_json_success([
-                'message' => 'Guzzle HTTP Client is loaded',
-                'details' => sprintf('Version: %s', $version),
-            ]);
-        } else {
-            wp_send_json_error([
-                'message' => 'Guzzle HTTP Client not found',
-                'details' => 'Run <code>composer install</code> to install dependencies',
-            ]);
-        }
-    }
-
-    /**
-     * Test if DomCrawler is loaded
-     *
-     * @since 1.1.1
-     * @return void
-     */
-    private function test_domcrawler_loaded() {
-        if (class_exists('Symfony\\Component\\DomCrawler\\Crawler')) {
-            wp_send_json_success([
-                'message' => 'Symfony DomCrawler is loaded',
-                'details' => 'HTML parsing functionality available',
-            ]);
-        } else {
-            wp_send_json_error([
-                'message' => 'Symfony DomCrawler not found',
-                'details' => 'Run <code>composer install</code> to install dependencies',
-            ]);
-        }
-    }
-
-    /**
-     * Test WordPress functions
-     *
-     * @since 1.1.1
-     * @return void
-     */
-    private function test_wordpress_functions() {
-        $required_functions = [
-            'get_transient',
-            'set_transient',
-            'delete_transient',
-            'wp_remote_get',
-            'sanitize_text_field',
-        ];
-
-        $missing = [];
-        foreach ($required_functions as $func) {
-            if (!function_exists($func)) {
-                $missing[] = $func;
-            }
-        }
-
-        if (empty($missing)) {
-            wp_send_json_success([
-                'message' => 'All WordPress functions available',
-                'details' => sprintf('Checked %d core functions', count($required_functions)),
-            ]);
-        } else {
-            wp_send_json_error([
-                'message' => 'Missing WordPress functions',
-                'details' => 'Missing: ' . implode(', ', $missing),
-            ]);
-        }
-    }
-
-    /**
-     * Test cache system
-     *
-     * @since 1.1.1
-     * @return void
-     */
-    private function test_cache_system() {
-        $test_key = 'geekbench_test_' . time();
-        $test_value = 'test_data_' . wp_generate_password(10, false);
-
-        // Try to set transient
-        $set_result = set_transient($test_key, $test_value, 60);
-
-        if (!$set_result) {
-            wp_send_json_error([
-                'message' => 'Failed to set cache',
-                'details' => 'Could not write to transient cache',
-            ]);
-            return;
-        }
-
-        // Try to get transient
-        $get_result = get_transient($test_key);
-
-        if ($get_result !== $test_value) {
-            wp_send_json_error([
-                'message' => 'Failed to read cache',
-                'details' => 'Transient value mismatch',
-            ]);
-            return;
-        }
-
-        // Try to delete transient
-        delete_transient($test_key);
-
-        wp_send_json_success([
-            'message' => 'Cache system working correctly',
-            'details' => 'Set, get, and delete operations successful',
-        ]);
-    }
-
-    /**
-     * Test Geekbench connectivity
-     *
-     * @since 1.1.1
-     * @return void
-     */
-    private function test_geekbench_connectivity() {
-        try {
-            $client = new \GuzzleHttp\Client([
-                'timeout' => 10,
-                'headers' => [
-                    'User-Agent' => 'Mozilla/5.0 (compatible; GeekbenchScraper/1.0)',
-                ],
-            ]);
-
-            $response = $client->get('https://browser.geekbench.com/search?q=test');
-            $status_code = $response->getStatusCode();
-
-            if ($status_code === 200) {
-                wp_send_json_success([
-                    'message' => 'Successfully connected to Geekbench',
-                    'details' => sprintf('HTTP %d - Server is reachable', $status_code),
-                ]);
-            } else {
-                wp_send_json_error([
-                    'message' => 'Unexpected response from Geekbench',
-                    'details' => sprintf('HTTP %d', $status_code),
-                ]);
-            }
-        } catch (\Exception $e) {
-            wp_send_json_error([
-                'message' => 'Cannot connect to Geekbench',
-                'details' => $e->getMessage(),
-            ]);
-        }
-    }
-
-    /**
-     * Test scraper logic with real data
-     *
-     * @since 1.1.1
-     * @return void
-     */
-    private function test_scraper_logic() {
-        try {
-            // Test with a known query that should return results
-            $test_query = 'iPhone';
-
-            // Attempt to fetch results
-            $results = $this->scraper->fetch($test_query);
-
-            // Validate results structure
-            if (!is_array($results)) {
-                wp_send_json_error([
-                    'message' => 'Scraper returned invalid data type',
-                    'details' => sprintf('Expected array, got %s', gettype($results)),
-                ]);
-                return;
-            }
-
-            // Check if we got any results
-            if (empty($results)) {
-                wp_send_json_error([
-                    'message' => 'Scraper returned no results',
-                    'details' => 'Query: "' . $test_query . '" - This may indicate parsing issues',
-                ]);
-                return;
-            }
-
-            // Validate first result has required fields
-            $first_result = $results[0];
-            $required_fields = ['system_name', 'single_core_score', 'multi_core_score', 'upload_date', 'benchmark_url'];
-            $missing_fields = [];
-
-            foreach ($required_fields as $field) {
-                if (!isset($first_result[$field])) {
-                    $missing_fields[] = $field;
-                }
-            }
-
-            if (!empty($missing_fields)) {
-                wp_send_json_error([
-                    'message' => 'Scraper results missing required fields',
-                    'details' => 'Missing: ' . implode(', ', $missing_fields),
-                ]);
-                return;
-            }
-
-            // Validate data quality
-            $issues = [];
-
-            if (empty($first_result['system_name'])) {
-                $issues[] = 'system_name is empty';
-            }
-
-            if (!is_numeric($first_result['single_core_score']) || $first_result['single_core_score'] <= 0) {
-                $issues[] = 'single_core_score invalid';
-            }
-
-            if (!is_numeric($first_result['multi_core_score']) || $first_result['multi_core_score'] <= 0) {
-                $issues[] = 'multi_core_score invalid';
-            }
-
-            if (!empty($issues)) {
-                wp_send_json_error([
-                    'message' => 'Scraper data quality issues',
-                    'details' => implode(', ', $issues),
-                ]);
-                return;
-            }
-
-            // All checks passed
-            wp_send_json_success([
-                'message' => 'Scraper logic working correctly',
-                'details' => sprintf('Retrieved %d results with valid data structure', count($results)),
-            ]);
-
-        } catch (\Exception $e) {
-            wp_send_json_error([
-                'message' => 'Scraper logic test failed',
-                'details' => $e->getMessage(),
-            ]);
-        }
-    }
-
-    /**
-     * Test HTML parser with sample data
-     *
-     * @since 1.1.1
-     * @return void
-     */
-    private function test_html_parser() {
-        try {
-            // Sample HTML that mimics Geekbench structure
-            // ⚠️ CRITICAL: This HTML structure must match actual Geekbench format
-            $sample_html = '
+
+	/**
+	 * Scraper instance
+	 *
+	 * @var Scraper
+	 */
+	private $scraper;
+
+	/**
+	 * Constructor
+	 *
+	 * @since 1.0.0
+	 * @param Scraper $scraper Scraper instance
+	 */
+	public function __construct( Scraper $scraper ) {
+		$this->scraper = $scraper;
+
+		// Add admin menu
+		add_action( 'admin_menu', [ $this, 'add_admin_menu' ] );
+
+		// ============================================================================
+		// CRITICAL: AJAX Handler Registration
+		// ============================================================================
+		// DO NOT register wp_ajax_geekbench_scraper_fetch here!
+		//
+		// REASON: The Shortcode class handles this action for BOTH:
+		//   - wp_ajax_geekbench_scraper_fetch (logged-in users)
+		//   - wp_ajax_nopriv_geekbench_scraper_fetch (non-logged-in users)
+		//
+		// If we register it here too, it will create a conflict during frontend
+		// AJAX requests, causing the search to fail with HTTP 403 or -1 errors.
+		//
+		// The Admin class is initialized for:
+		//   - Regular admin pages (is_admin() && !wp_doing_ajax())
+		//   - Admin AJAX requests (wp_doing_ajax() && current_user_can('manage_options'))
+		//
+		// This ensures admin-specific AJAX handlers (self-test, etc.) work correctly
+		// while preventing conflicts with frontend AJAX handlers.
+		// ============================================================================
+
+		// Register AJAX handlers (admin-only actions)
+		add_action( 'wp_ajax_geekbench_scraper_refresh', [ $this, 'ajax_refresh_results' ] );
+		add_action( 'wp_ajax_geekbench_scraper_save_translations', [ $this, 'ajax_save_translations' ] );
+		add_action( 'wp_ajax_geekbench_self_test', [ $this, 'ajax_self_test' ] );
+		add_action( 'wp_ajax_geekbench_test_table_sorting', [ $this, 'ajax_test_table_sorting' ] );
+	}
+
+	/**
+	 * Add admin menu item
+	 *
+	 * @since 1.0.0
+	 * @return void
+	 */
+	public function add_admin_menu() {
+		// Main page
+		add_submenu_page(
+			'tools.php',
+			__( 'Geekbench Scraper', 'geekbench-scraper' ),
+			__( 'Geekbench Scraper', 'geekbench-scraper' ),
+			'manage_options',
+			'geekbench-scraper',
+			[ $this, 'render_admin_page' ]
+		);
+
+		// Settings page
+		add_submenu_page(
+			'tools.php',
+			__( 'Geekbench Settings', 'geekbench-scraper' ),
+			__( 'Geekbench Settings', 'geekbench-scraper' ),
+			'manage_options',
+			'geekbench-scraper-settings',
+			[ $this, 'render_settings_page' ]
+		);
+	}
+
+	/**
+	 * Render admin page
+	 *
+	 * @since 1.0.0
+	 * @return void
+	 */
+	public function render_admin_page() {
+		// Check user capabilities
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( __( 'You do not have sufficient permissions to access this page.', 'geekbench-scraper' ) );
+		}
+
+		// Get default query
+		$default_query = get_option( 'geekbench_scraper_default_query', 'iPhone18' );
+
+		// Get current query from request or use default
+		$current_query = isset( $_GET['query'] ) ? sanitize_text_field( $_GET['query'] ) : $default_query;
+
+		// Fetch results
+		$results = [];
+		$error   = null;
+
+		if ( ! empty( $current_query ) ) {
+			try {
+				$results = $this->scraper->fetch( $current_query );
+			} catch ( \Exception $e ) {
+				$error = $e->getMessage();
+			}
+		}
+
+		// Include template
+		include GEEKBENCH_SCRAPER_PLUGIN_DIR . 'templates/admin-page.php';
+	}
+
+	/**
+	 * AJAX handler for fetching results
+	 *
+	 * @since 1.0.0
+	 * @return void
+	 */
+	public function ajax_fetch_results() {
+		// Verify nonce
+		check_ajax_referer( 'geekbench_scraper_nonce', 'nonce' );
+
+		// Check capabilities
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error(
+				[
+					'message' => __( 'Insufficient permissions', 'geekbench-scraper' ),
+				]
+			);
+		}
+
+		// Get query parameter
+		$query = isset( $_POST['query'] ) ? sanitize_text_field( $_POST['query'] ) : '';
+
+		if ( empty( $query ) ) {
+			wp_send_json_error(
+				[
+					'message' => __( 'Search query is required', 'geekbench-scraper' ),
+				]
+			);
+		}
+
+		try {
+			// Fetch results
+			$results = $this->scraper->fetch( $query );
+
+			// Render table HTML
+			ob_start();
+			include GEEKBENCH_SCRAPER_PLUGIN_DIR . 'templates/results-table.php';
+			$html = ob_get_clean();
+
+			wp_send_json_success(
+				[
+					'results' => $results,
+					'html'    => $html,
+					'count'   => count( $results ),
+				]
+			);
+
+		} catch ( \Exception $e ) {
+			wp_send_json_error(
+				[
+					'message' => $e->getMessage(),
+				]
+			);
+		}
+	}
+
+	/**
+	 * AJAX handler for refreshing results (bypass cache)
+	 *
+	 * @since 1.0.0
+	 * @return void
+	 */
+	public function ajax_refresh_results() {
+		// Verify nonce
+		check_ajax_referer( 'geekbench_scraper_nonce', 'nonce' );
+
+		// Check capabilities
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error(
+				[
+					'message' => __( 'Insufficient permissions', 'geekbench-scraper' ),
+				]
+			);
+		}
+
+		// Get query parameter
+		$query = isset( $_POST['query'] ) ? sanitize_text_field( $_POST['query'] ) : '';
+
+		if ( empty( $query ) ) {
+			wp_send_json_error(
+				[
+					'message' => __( 'Search query is required', 'geekbench-scraper' ),
+				]
+			);
+		}
+
+		try {
+			// Clear cache first
+			$this->scraper->clear_cache( $query );
+
+			// Fetch fresh results
+			$results = $this->scraper->fetch( $query, true );
+
+			// Render table HTML
+			ob_start();
+			include GEEKBENCH_SCRAPER_PLUGIN_DIR . 'templates/results-table.php';
+			$html = ob_get_clean();
+
+			wp_send_json_success(
+				[
+					'results' => $results,
+					'html'    => $html,
+					'count'   => count( $results ),
+					'message' => __( 'Results refreshed successfully', 'geekbench-scraper' ),
+				]
+			);
+
+		} catch ( \Exception $e ) {
+			wp_send_json_error(
+				[
+					'message' => $e->getMessage(),
+				]
+			);
+		}
+	}
+
+	/**
+	 * Render settings page
+	 *
+	 * @since 1.1.0
+	 * @return void
+	 */
+	public function render_settings_page() {
+		// Check user capabilities
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( __( 'You do not have sufficient permissions to access this page.', 'geekbench-scraper' ) );
+		}
+
+		// Handle frontend settings form submission
+		if ( isset( $_POST['save_frontend_settings'] ) && check_admin_referer( 'geekbench_frontend_settings_nonce' ) ) {
+			$search_hint = isset( $_POST['search_hint'] ) ? sanitize_text_field( wp_unslash( $_POST['search_hint'] ) ) : 'Search for any device';
+			update_option( 'geekbench_search_hint', $search_hint );
+			echo '<div class="notice notice-success is-dismissible"><p>' . __( 'Frontend settings saved successfully!', 'geekbench-scraper' ) . '</p></div>';
+		}
+
+		// Handle reCAPTCHA settings form submission
+		if ( isset( $_POST['save_recaptcha_settings'] ) && check_admin_referer( 'geekbench_recaptcha_settings_nonce' ) ) {
+			$recaptcha_enabled    = isset( $_POST['recaptcha_enabled'] ) ? 1 : 0;
+			$recaptcha_site_key   = isset( $_POST['recaptcha_site_key'] ) ? sanitize_text_field( wp_unslash( $_POST['recaptcha_site_key'] ) ) : '';
+			$recaptcha_secret_key = isset( $_POST['recaptcha_secret_key'] ) ? sanitize_text_field( wp_unslash( $_POST['recaptcha_secret_key'] ) ) : '';
+
+			update_option( 'geekbench_recaptcha_enabled', $recaptcha_enabled );
+			update_option( 'geekbench_recaptcha_site_key', $recaptcha_site_key );
+			update_option( 'geekbench_recaptcha_secret_key', $recaptcha_secret_key );
+
+			echo '<div class="notice notice-success is-dismissible"><p>' . __( 'reCAPTCHA settings saved successfully!', 'geekbench-scraper' ) . '</p></div>';
+		}
+
+		// Handle translations form submission
+		if ( isset( $_POST['geekbench_save_translations'] ) && check_admin_referer( 'geekbench_translations_nonce' ) ) {
+			$translations = [];
+
+			if ( isset( $_POST['system_names'] ) && isset( $_POST['display_names'] ) ) {
+				// Unslash arrays first, then sanitize
+				$system_names  = array_map( 'sanitize_text_field', array_map( 'wp_unslash', $_POST['system_names'] ) );
+				$display_names = array_map( 'sanitize_text_field', array_map( 'wp_unslash', $_POST['display_names'] ) );
+
+				foreach ( $system_names as $index => $system_name ) {
+					if ( ! empty( $system_name ) && ! empty( $display_names[ $index ] ) ) {
+						$translations[ $system_name ] = $display_names[ $index ];
+					}
+				}
+			}
+
+			update_option( 'geekbench_scraper_name_translations', $translations );
+			echo '<div class="notice notice-success is-dismissible"><p>' . __( 'Translations saved successfully!', 'geekbench-scraper' ) . '</p></div>';
+		}
+
+		// Get current translations
+		$translations = get_option( 'geekbench_scraper_name_translations', [] );
+
+		// Include settings template
+		include GEEKBENCH_SCRAPER_PLUGIN_DIR . 'templates/settings-page.php';
+	}
+
+	/**
+	 * AJAX handler for saving translations
+	 *
+	 * @since 1.1.0
+	 * @return void
+	 */
+	public function ajax_save_translations() {
+		// Verify nonce
+		check_ajax_referer( 'geekbench_scraper_nonce', 'nonce' );
+
+		// Check permissions
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( [ 'message' => __( 'Insufficient permissions', 'geekbench-scraper' ) ] );
+			return;
+		}
+
+		$translations = isset( $_POST['translations'] ) ? $_POST['translations'] : [];
+		$sanitized    = [];
+
+		foreach ( $translations as $system_name => $display_name ) {
+			$system_name  = sanitize_text_field( $system_name );
+			$display_name = sanitize_text_field( $display_name );
+
+			if ( ! empty( $system_name ) && ! empty( $display_name ) ) {
+				$sanitized[ $system_name ] = $display_name;
+			}
+		}
+
+		update_option( 'geekbench_scraper_name_translations', $sanitized );
+
+		wp_send_json_success(
+			[
+				'message' => __( 'Translations saved successfully', 'geekbench-scraper' ),
+				'count'   => count( $sanitized ),
+			]
+		);
+	}
+
+	/**
+	 * Handle self-test AJAX request
+	 *
+	 * @since 1.1.1
+	 * @return void
+	 */
+	public function ajax_self_test() {
+		// Verify nonce
+		check_ajax_referer( 'geekbench_self_test', 'nonce' );
+
+		// Check permissions
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error(
+				[
+					'message' => __( 'Insufficient permissions', 'geekbench-scraper' ),
+				]
+			);
+		}
+
+		$test = isset( $_POST['test'] ) ? sanitize_text_field( $_POST['test'] ) : '';
+
+		switch ( $test ) {
+			case 'php_version':
+				$this->test_php_version();
+				break;
+
+			case 'guzzle_loaded':
+				$this->test_guzzle_loaded();
+				break;
+
+			case 'domcrawler_loaded':
+				$this->test_domcrawler_loaded();
+				break;
+
+			case 'wordpress_functions':
+				$this->test_wordpress_functions();
+				break;
+
+			case 'cache_system':
+				$this->test_cache_system();
+				break;
+
+			case 'geekbench_connectivity':
+				$this->test_geekbench_connectivity();
+				break;
+
+			case 'scraper_logic':
+				$this->test_scraper_logic();
+				break;
+
+			case 'html_parser':
+				$this->test_html_parser();
+				break;
+
+			case 'frontend_ajax':
+				$this->test_frontend_ajax();
+				break;
+
+			default:
+				wp_send_json_error(
+					[
+						'message' => __( 'Unknown test', 'geekbench-scraper' ),
+					]
+				);
+		}
+	}
+
+	/**
+	 * Test PHP version
+	 *
+	 * @since 1.1.1
+	 * @return void
+	 */
+	private function test_php_version() {
+		$version  = phpversion();
+		$required = '7.4';
+
+		if ( version_compare( $version, $required, '>=' ) ) {
+			wp_send_json_success(
+				[
+					'message' => 'PHP version is compatible',
+					'details' => sprintf( 'Current: %s (Required: %s+)', $version, $required ),
+				]
+			);
+		} else {
+			wp_send_json_error(
+				[
+					'message' => 'PHP version is too old',
+					'details' => sprintf( 'Current: %s (Required: %s+)', $version, $required ),
+				]
+			);
+		}
+	}
+
+	/**
+	 * Test if Guzzle is loaded
+	 *
+	 * @since 1.1.1
+	 * @return void
+	 */
+	private function test_guzzle_loaded() {
+		if ( class_exists( 'GuzzleHttp\\Client' ) ) {
+			$reflection = new \ReflectionClass( 'GuzzleHttp\\Client' );
+			$version    = \GuzzleHttp\Client::MAJOR_VERSION ?? 'Unknown';
+
+			wp_send_json_success(
+				[
+					'message' => 'Guzzle HTTP Client is loaded',
+					'details' => sprintf( 'Version: %s', $version ),
+				]
+			);
+		} else {
+			wp_send_json_error(
+				[
+					'message' => 'Guzzle HTTP Client not found',
+					'details' => 'Run <code>composer install</code> to install dependencies',
+				]
+			);
+		}
+	}
+
+	/**
+	 * Test if DomCrawler is loaded
+	 *
+	 * @since 1.1.1
+	 * @return void
+	 */
+	private function test_domcrawler_loaded() {
+		if ( class_exists( 'Symfony\\Component\\DomCrawler\\Crawler' ) ) {
+			wp_send_json_success(
+				[
+					'message' => 'Symfony DomCrawler is loaded',
+					'details' => 'HTML parsing functionality available',
+				]
+			);
+		} else {
+			wp_send_json_error(
+				[
+					'message' => 'Symfony DomCrawler not found',
+					'details' => 'Run <code>composer install</code> to install dependencies',
+				]
+			);
+		}
+	}
+
+	/**
+	 * Test WordPress functions
+	 *
+	 * @since 1.1.1
+	 * @return void
+	 */
+	private function test_wordpress_functions() {
+		$required_functions = [
+			'get_transient',
+			'set_transient',
+			'delete_transient',
+			'wp_remote_get',
+			'sanitize_text_field',
+		];
+
+		$missing = [];
+		foreach ( $required_functions as $func ) {
+			if ( ! function_exists( $func ) ) {
+				$missing[] = $func;
+			}
+		}
+
+		if ( empty( $missing ) ) {
+			wp_send_json_success(
+				[
+					'message' => 'All WordPress functions available',
+					'details' => sprintf( 'Checked %d core functions', count( $required_functions ) ),
+				]
+			);
+		} else {
+			wp_send_json_error(
+				[
+					'message' => 'Missing WordPress functions',
+					'details' => 'Missing: ' . implode( ', ', $missing ),
+				]
+			);
+		}
+	}
+
+	/**
+	 * Test cache system
+	 *
+	 * @since 1.1.1
+	 * @return void
+	 */
+	private function test_cache_system() {
+		$test_key   = 'geekbench_test_' . time();
+		$test_value = 'test_data_' . wp_generate_password( 10, false );
+
+		// Try to set transient
+		$set_result = set_transient( $test_key, $test_value, 60 );
+
+		if ( ! $set_result ) {
+			wp_send_json_error(
+				[
+					'message' => 'Failed to set cache',
+					'details' => 'Could not write to transient cache',
+				]
+			);
+			return;
+		}
+
+		// Try to get transient
+		$get_result = get_transient( $test_key );
+
+		if ( $get_result !== $test_value ) {
+			wp_send_json_error(
+				[
+					'message' => 'Failed to read cache',
+					'details' => 'Transient value mismatch',
+				]
+			);
+			return;
+		}
+
+		// Try to delete transient
+		delete_transient( $test_key );
+
+		wp_send_json_success(
+			[
+				'message' => 'Cache system working correctly',
+				'details' => 'Set, get, and delete operations successful',
+			]
+		);
+	}
+
+	/**
+	 * Test Geekbench connectivity
+	 *
+	 * @since 1.1.1
+	 * @return void
+	 */
+	private function test_geekbench_connectivity() {
+		try {
+			$client = new \GuzzleHttp\Client(
+				[
+					'timeout' => 10,
+					'headers' => [
+						'User-Agent' => 'Mozilla/5.0 (compatible; GeekbenchScraper/1.0)',
+					],
+				]
+			);
+
+			$response    = $client->get( 'https://browser.geekbench.com/search?q=test' );
+			$status_code = $response->getStatusCode();
+
+			if ( $status_code === 200 ) {
+				wp_send_json_success(
+					[
+						'message' => 'Successfully connected to Geekbench',
+						'details' => sprintf( 'HTTP %d - Server is reachable', $status_code ),
+					]
+				);
+			} else {
+				wp_send_json_error(
+					[
+						'message' => 'Unexpected response from Geekbench',
+						'details' => sprintf( 'HTTP %d', $status_code ),
+					]
+				);
+			}
+		} catch ( \Exception $e ) {
+			wp_send_json_error(
+				[
+					'message' => 'Cannot connect to Geekbench',
+					'details' => $e->getMessage(),
+				]
+			);
+		}
+	}
+
+	/**
+	 * Test scraper logic with real data
+	 *
+	 * @since 1.1.1
+	 * @return void
+	 */
+	private function test_scraper_logic() {
+		try {
+			// Test with a known query that should return results
+			$test_query = 'iPhone';
+
+			// Attempt to fetch results
+			$results = $this->scraper->fetch( $test_query );
+
+			// Validate results structure
+			if ( ! is_array( $results ) ) {
+				wp_send_json_error(
+					[
+						'message' => 'Scraper returned invalid data type',
+						'details' => sprintf( 'Expected array, got %s', gettype( $results ) ),
+					]
+				);
+				return;
+			}
+
+			// Check if we got any results
+			if ( empty( $results ) ) {
+				wp_send_json_error(
+					[
+						'message' => 'Scraper returned no results',
+						'details' => 'Query: "' . $test_query . '" - This may indicate parsing issues',
+					]
+				);
+				return;
+			}
+
+			// Validate first result has required fields
+			$first_result    = $results[0];
+			$required_fields = [ 'system_name', 'single_core_score', 'multi_core_score', 'upload_date', 'benchmark_url' ];
+			$missing_fields  = [];
+
+			foreach ( $required_fields as $field ) {
+				if ( ! isset( $first_result[ $field ] ) ) {
+					$missing_fields[] = $field;
+				}
+			}
+
+			if ( ! empty( $missing_fields ) ) {
+				wp_send_json_error(
+					[
+						'message' => 'Scraper results missing required fields',
+						'details' => 'Missing: ' . implode( ', ', $missing_fields ),
+					]
+				);
+				return;
+			}
+
+			// Validate data quality
+			$issues = [];
+
+			if ( empty( $first_result['system_name'] ) ) {
+				$issues[] = 'system_name is empty';
+			}
+
+			if ( ! is_numeric( $first_result['single_core_score'] ) || $first_result['single_core_score'] <= 0 ) {
+				$issues[] = 'single_core_score invalid';
+			}
+
+			if ( ! is_numeric( $first_result['multi_core_score'] ) || $first_result['multi_core_score'] <= 0 ) {
+				$issues[] = 'multi_core_score invalid';
+			}
+
+			if ( ! empty( $issues ) ) {
+				wp_send_json_error(
+					[
+						'message' => 'Scraper data quality issues',
+						'details' => implode( ', ', $issues ),
+					]
+				);
+				return;
+			}
+
+			// All checks passed
+			wp_send_json_success(
+				[
+					'message' => 'Scraper logic working correctly',
+					'details' => sprintf( 'Retrieved %d results with valid data structure', count( $results ) ),
+				]
+			);
+
+		} catch ( \Exception $e ) {
+			wp_send_json_error(
+				[
+					'message' => 'Scraper logic test failed',
+					'details' => $e->getMessage(),
+				]
+			);
+		}
+	}
+
+	/**
+	 * Test HTML parser with sample data
+	 *
+	 * @since 1.1.1
+	 * @return void
+	 */
+	private function test_html_parser() {
+		try {
+			// Sample HTML that mimics Geekbench structure
+			// ⚠️ CRITICAL: This HTML structure must match actual Geekbench format
+			$sample_html = '
                 <div class="row">
                     <div class="col-6 col-sm-3">
                         <a href="/v6/cpu/8888888">
@@ -694,382 +758,398 @@ class Admin {
                 </div>
             ';
 
-            // Create DomCrawler instance
-            $crawler = new \Symfony\Component\DomCrawler\Crawler($sample_html);
+			// Create DomCrawler instance
+			$crawler = new \Symfony\Component\DomCrawler\Crawler( $sample_html );
 
-            // Test critical selectors
-            $tests_passed = 0;
-            $tests_failed = 0;
-            $details = [];
+			// Test critical selectors
+			$tests_passed = 0;
+			$tests_failed = 0;
+			$details      = [];
 
-            // Test 1: System name selector
-            try {
-                $system_name = $crawler->filter('.col-6.col-sm-3 a .list-col-text')->first()->text();
-                if ($system_name === 'iPhone17,1') {
-                    $tests_passed++;
-                    $details[] = '✓ System name selector working';
-                } else {
-                    $tests_failed++;
-                    $details[] = '✗ System name: expected "iPhone17,1", got "' . $system_name . '"';
-                }
-            } catch (\Exception $e) {
-                $tests_failed++;
-                $details[] = '✗ System name selector failed: ' . $e->getMessage();
-            }
+			// Test 1: System name selector
+			try {
+				$system_name = $crawler->filter( '.col-6.col-sm-3 a .list-col-text' )->first()->text();
+				if ( $system_name === 'iPhone17,1' ) {
+					++$tests_passed;
+					$details[] = '✓ System name selector working';
+				} else {
+					++$tests_failed;
+					$details[] = '✗ System name: expected "iPhone17,1", got "' . $system_name . '"';
+				}
+			} catch ( \Exception $e ) {
+				++$tests_failed;
+				$details[] = '✗ System name selector failed: ' . $e->getMessage();
+			}
 
-            // Test 2: Platform selector
-            try {
-                $platform = $crawler->filter('.col-6.col-sm-3 .list-col-text')->eq(1)->text();
-                if ($platform === 'iOS 18.0') {
-                    $tests_passed++;
-                    $details[] = '✓ Platform selector working';
-                } else {
-                    $tests_failed++;
-                    $details[] = '✗ Platform: expected "iOS 18.0", got "' . $platform . '"';
-                }
-            } catch (\Exception $e) {
-                $tests_failed++;
-                $details[] = '✗ Platform selector failed: ' . $e->getMessage();
-            }
+			// Test 2: Platform selector
+			try {
+				$platform = $crawler->filter( '.col-6.col-sm-3 .list-col-text' )->eq( 1 )->text();
+				if ( $platform === 'iOS 18.0' ) {
+					++$tests_passed;
+					$details[] = '✓ Platform selector working';
+				} else {
+					++$tests_failed;
+					$details[] = '✗ Platform: expected "iOS 18.0", got "' . $platform . '"';
+				}
+			} catch ( \Exception $e ) {
+				++$tests_failed;
+				$details[] = '✗ Platform selector failed: ' . $e->getMessage();
+			}
 
-            // Test 3: Single-core score selector
-            try {
-                $single_core = $crawler->filter('.score')->eq(0)->text();
-                if ($single_core === '3500') {
-                    $tests_passed++;
-                    $details[] = '✓ Single-core score selector working';
-                } else {
-                    $tests_failed++;
-                    $details[] = '✗ Single-core: expected "3500", got "' . $single_core . '"';
-                }
-            } catch (\Exception $e) {
-                $tests_failed++;
-                $details[] = '✗ Single-core selector failed: ' . $e->getMessage();
-            }
+			// Test 3: Single-core score selector
+			try {
+				$single_core = $crawler->filter( '.score' )->eq( 0 )->text();
+				if ( $single_core === '3500' ) {
+					++$tests_passed;
+					$details[] = '✓ Single-core score selector working';
+				} else {
+					++$tests_failed;
+					$details[] = '✗ Single-core: expected "3500", got "' . $single_core . '"';
+				}
+			} catch ( \Exception $e ) {
+				++$tests_failed;
+				$details[] = '✗ Single-core selector failed: ' . $e->getMessage();
+			}
 
-            // Test 4: Multi-core score selector
-            try {
-                $multi_core = $crawler->filter('.score')->eq(1)->text();
-                if ($multi_core === '8500') {
-                    $tests_passed++;
-                    $details[] = '✓ Multi-core score selector working';
-                } else {
-                    $tests_failed++;
-                    $details[] = '✗ Multi-core: expected "8500", got "' . $multi_core . '"';
-                }
-            } catch (\Exception $e) {
-                $tests_failed++;
-                $details[] = '✗ Multi-core selector failed: ' . $e->getMessage();
-            }
+			// Test 4: Multi-core score selector
+			try {
+				$multi_core = $crawler->filter( '.score' )->eq( 1 )->text();
+				if ( $multi_core === '8500' ) {
+					++$tests_passed;
+					$details[] = '✓ Multi-core score selector working';
+				} else {
+					++$tests_failed;
+					$details[] = '✗ Multi-core: expected "8500", got "' . $multi_core . '"';
+				}
+			} catch ( \Exception $e ) {
+				++$tests_failed;
+				$details[] = '✗ Multi-core selector failed: ' . $e->getMessage();
+			}
 
-            // Test 5: Upload date selector
-            try {
-                $upload_date = $crawler->filter('.col-12 .list-col-text')->text();
-                if (strpos($upload_date, 'Oct 06, 2025') !== false) {
-                    $tests_passed++;
-                    $details[] = '✓ Upload date selector working';
-                } else {
-                    $tests_failed++;
-                    $details[] = '✗ Upload date: expected "Oct 06, 2025", got "' . $upload_date . '"';
-                }
-            } catch (\Exception $e) {
-                $tests_failed++;
-                $details[] = '✗ Upload date selector failed: ' . $e->getMessage();
-            }
+			// Test 5: Upload date selector
+			try {
+				$upload_date = $crawler->filter( '.col-12 .list-col-text' )->text();
+				if ( strpos( $upload_date, 'Oct 06, 2025' ) !== false ) {
+					++$tests_passed;
+					$details[] = '✓ Upload date selector working';
+				} else {
+					++$tests_failed;
+					$details[] = '✗ Upload date: expected "Oct 06, 2025", got "' . $upload_date . '"';
+				}
+			} catch ( \Exception $e ) {
+				++$tests_failed;
+				$details[] = '✗ Upload date selector failed: ' . $e->getMessage();
+			}
 
-            // Test 6: URL selector
-            try {
-                $url = $crawler->filter('.col-6.col-sm-3 a')->first()->attr('href');
-                if ($url === '/v6/cpu/8888888') {
-                    $tests_passed++;
-                    $details[] = '✓ URL selector working';
-                } else {
-                    $tests_failed++;
-                    $details[] = '✗ URL: expected "/v6/cpu/8888888", got "' . $url . '"';
-                }
-            } catch (\Exception $e) {
-                $tests_failed++;
-                $details[] = '✗ URL selector failed: ' . $e->getMessage();
-            }
+			// Test 6: URL selector
+			try {
+				$url = $crawler->filter( '.col-6.col-sm-3 a' )->first()->attr( 'href' );
+				if ( $url === '/v6/cpu/8888888' ) {
+					++$tests_passed;
+					$details[] = '✓ URL selector working';
+				} else {
+					++$tests_failed;
+					$details[] = '✗ URL: expected "/v6/cpu/8888888", got "' . $url . '"';
+				}
+			} catch ( \Exception $e ) {
+				++$tests_failed;
+				$details[] = '✗ URL selector failed: ' . $e->getMessage();
+			}
 
-            // Determine overall result
-            if ($tests_failed === 0) {
-                wp_send_json_success([
-                    'message' => 'All HTML selectors working correctly',
-                    'details' => sprintf('%d/6 selectors passed - %s', $tests_passed, implode('; ', $details)),
-                ]);
-            } else {
-                wp_send_json_error([
-                    'message' => sprintf('%d/%d selectors failed', $tests_failed, ($tests_passed + $tests_failed)),
-                    'details' => implode('; ', $details),
-                ]);
-            }
+			// Determine overall result
+			if ( $tests_failed === 0 ) {
+				wp_send_json_success(
+					[
+						'message' => 'All HTML selectors working correctly',
+						'details' => sprintf( '%d/6 selectors passed - %s', $tests_passed, implode( '; ', $details ) ),
+					]
+				);
+			} else {
+				wp_send_json_error(
+					[
+						'message' => sprintf( '%d/%d selectors failed', $tests_failed, ( $tests_passed + $tests_failed ) ),
+						'details' => implode( '; ', $details ),
+					]
+				);
+			}
+		} catch ( \Exception $e ) {
+			wp_send_json_error(
+				[
+					'message' => 'HTML parser test failed',
+					'details' => $e->getMessage(),
+				]
+			);
+		}
+	}
 
-        } catch (\Exception $e) {
-            wp_send_json_error([
-                'message' => 'HTML parser test failed',
-                'details' => $e->getMessage(),
-            ]);
-        }
-    }
+	/**
+	 * Test table sorting functionality
+	 *
+	 * @since 1.3.1
+	 * @return void
+	 */
+	public function ajax_test_table_sorting() {
+		// Verify nonce
+		check_ajax_referer( 'geekbench_self_test', 'nonce' );
 
-    /**
-     * Test table sorting functionality
-     *
-     * @since 1.3.1
-     * @return void
-     */
-    public function ajax_test_table_sorting() {
-        // Verify nonce
-        check_ajax_referer('geekbench_self_test', 'nonce');
+		// Check permissions
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error(
+				[
+					'message' => __( 'Insufficient permissions', 'geekbench-scraper' ),
+				]
+			);
+		}
 
-        // Check permissions
-        if (!current_user_can('manage_options')) {
-            wp_send_json_error([
-                'message' => __('Insufficient permissions', 'geekbench-scraper'),
-            ]);
-        }
+		// Check if results-table.php file exists
+		$template_file = GEEKBENCH_SCRAPER_PLUGIN_DIR . 'templates/results-table.php';
 
-        // Check if results-table.php file exists
-        $template_file = GEEKBENCH_SCRAPER_PLUGIN_DIR . 'templates/results-table.php';
+		if ( ! file_exists( $template_file ) ) {
+			wp_send_json_error(
+				[
+					'message' => 'Template file not found',
+					'details' => [ 'templates/results-table.php file is missing' ],
+				]
+			);
+			return;
+		}
 
-        if (!file_exists($template_file)) {
-            wp_send_json_error([
-                'message' => 'Template file not found',
-                'details' => ['templates/results-table.php file is missing'],
-            ]);
-            return;
-        }
+		// Read the template file and check for critical functions
+		$file_content = file_get_contents( $template_file );
 
-        // Read the template file and check for critical functions
-        $file_content = file_get_contents($template_file);
+		$checks     = [];
+		$all_passed = true;
 
-        $checks = [];
-        $all_passed = true;
+		// Check 1: initTableSort function exists
+		if ( strpos( $file_content, 'function initTableSort()' ) !== false ) {
+			$checks[] = 'initTableSort() function found in template';
+		} else {
+			$checks[]   = '❌ initTableSort() function MISSING from template';
+			$all_passed = false;
+		}
 
-        // Check 1: initTableSort function exists
-        if (strpos($file_content, 'function initTableSort()') !== false) {
-            $checks[] = 'initTableSort() function found in template';
-        } else {
-            $checks[] = '❌ initTableSort() function MISSING from template';
-            $all_passed = false;
-        }
+		// Check 2: testTableSorting function exists
+		if ( strpos( $file_content, 'function testTableSorting()' ) !== false ) {
+			$checks[] = 'testTableSorting() function found in template';
+		} else {
+			$checks[]   = '❌ testTableSorting() function MISSING from template';
+			$all_passed = false;
+		}
 
-        // Check 2: testTableSorting function exists
-        if (strpos($file_content, 'function testTableSorting()') !== false) {
-            $checks[] = 'testTableSorting() function found in template';
-        } else {
-            $checks[] = '❌ testTableSorting() function MISSING from template';
-            $all_passed = false;
-        }
+		// Check 3: Critical section warning exists
+		if ( strpos( $file_content, 'CRITICAL: DO NOT REMOVE OR REFACTOR THIS JAVASCRIPT SECTION' ) !== false ) {
+			$checks[] = 'Critical section warning present';
+		} else {
+			$checks[] = '⚠️ Critical section warning missing (not critical but recommended)';
+		}
 
-        // Check 3: Critical section warning exists
-        if (strpos($file_content, 'CRITICAL: DO NOT REMOVE OR REFACTOR THIS JAVASCRIPT SECTION') !== false) {
-            $checks[] = 'Critical section warning present';
-        } else {
-            $checks[] = '⚠️ Critical section warning missing (not critical but recommended)';
-        }
+		// Check 4: Sortable headers markup exists
+		if ( strpos( $file_content, 'class="sortable"' ) !== false ) {
+			$checks[] = 'Sortable header classes found';
+		} else {
+			$checks[]   = '❌ Sortable header classes MISSING';
+			$all_passed = false;
+		}
 
-        // Check 4: Sortable headers markup exists
-        if (strpos($file_content, 'class="sortable"') !== false) {
-            $checks[] = 'Sortable header classes found';
-        } else {
-            $checks[] = '❌ Sortable header classes MISSING';
-            $all_passed = false;
-        }
+		// Check 5: Sort indicators exist
+		if ( strpos( $file_content, 'class="sort-indicator"' ) !== false ) {
+			$checks[] = 'Sort indicator elements found';
+		} else {
+			$checks[]   = '❌ Sort indicator elements MISSING';
+			$all_passed = false;
+		}
 
-        // Check 5: Sort indicators exist
-        if (strpos($file_content, 'class="sort-indicator"') !== false) {
-            $checks[] = 'Sort indicator elements found';
-        } else {
-            $checks[] = '❌ Sort indicator elements MISSING';
-            $all_passed = false;
-        }
+		// Check 6: Data attributes for sorting
+		if ( strpos( $file_content, 'data-system-name' ) !== false &&
+			strpos( $file_content, 'data-processor' ) !== false &&
+			strpos( $file_content, 'data-platform' ) !== false ) {
+			$checks[] = 'Data attributes for sorting found';
+		} else {
+			$checks[]   = '❌ Required data attributes MISSING';
+			$all_passed = false;
+		}
 
-        // Check 6: Data attributes for sorting
-        if (strpos($file_content, 'data-system-name') !== false &&
-            strpos($file_content, 'data-processor') !== false &&
-            strpos($file_content, 'data-platform') !== false) {
-            $checks[] = 'Data attributes for sorting found';
-        } else {
-            $checks[] = '❌ Required data attributes MISSING';
-            $all_passed = false;
-        }
+		// Check 7: Auto-initialization code
+		if ( strpos( $file_content, 'DOMContentLoaded' ) !== false &&
+			strpos( $file_content, 'initTableSort' ) !== false ) {
+			$checks[] = 'Auto-initialization code found';
+		} else {
+			$checks[]   = '❌ Auto-initialization code MISSING';
+			$all_passed = false;
+		}
 
-        // Check 7: Auto-initialization code
-        if (strpos($file_content, 'DOMContentLoaded') !== false &&
-            strpos($file_content, 'initTableSort') !== false) {
-            $checks[] = 'Auto-initialization code found';
-        } else {
-            $checks[] = '❌ Auto-initialization code MISSING';
-            $all_passed = false;
-        }
+		// Check 8: Global scope exposure
+		if ( strpos( $file_content, 'window.initTableSort' ) !== false ) {
+			$checks[] = 'Functions exposed to global scope';
+		} else {
+			$checks[] = '⚠️ Functions not exposed to global scope (not critical)';
+		}
 
-        // Check 8: Global scope exposure
-        if (strpos($file_content, 'window.initTableSort') !== false) {
-            $checks[] = 'Functions exposed to global scope';
-        } else {
-            $checks[] = '⚠️ Functions not exposed to global scope (not critical)';
-        }
+		if ( $all_passed ) {
+			wp_send_json_success(
+				[
+					'message' => 'Table sorting code is present and complete',
+					'details' => $checks,
+				]
+			);
+		} else {
+			wp_send_json_error(
+				[
+					'message' => 'Table sorting code has missing components',
+					'details' => $checks,
+				]
+			);
+		}
+	}
 
-        if ($all_passed) {
-            wp_send_json_success([
-                'message' => 'Table sorting code is present and complete',
-                'details' => $checks,
-            ]);
-        } else {
-            wp_send_json_error([
-                'message' => 'Table sorting code has missing components',
-                'details' => $checks,
-            ]);
-        }
-    }
+	/**
+	 * Test frontend AJAX handler
+	 *
+	 * This test simulates a frontend AJAX request to ensure the
+	 * geekbench_scraper_fetch action is properly registered and working.
+	 *
+	 * @since 1.3.4
+	 * @return void
+	 */
+	private function test_frontend_ajax() {
+		$checks     = [];
+		$all_passed = true;
 
-    /**
-     * Test frontend AJAX handler
-     *
-     * This test simulates a frontend AJAX request to ensure the
-     * geekbench_scraper_fetch action is properly registered and working.
-     *
-     * @since 1.3.4
-     * @return void
-     */
-    private function test_frontend_ajax() {
-        $checks = [];
-        $all_passed = true;
+		// Check 1: Verify Shortcode class exists
+		if ( class_exists( 'GeekbenchScraper\\Shortcode' ) ) {
+			$checks[] = '✅ Shortcode class exists';
+		} else {
+			$checks[]   = '❌ Shortcode class NOT found';
+			$all_passed = false;
+		}
 
-        // Check 1: Verify Shortcode class exists
-        if (class_exists('GeekbenchScraper\\Shortcode')) {
-            $checks[] = '✅ Shortcode class exists';
-        } else {
-            $checks[] = '❌ Shortcode class NOT found';
-            $all_passed = false;
-        }
+		// Check 2: Verify AJAX handlers are registered
+		global $wp_filter;
 
-        // Check 2: Verify AJAX handlers are registered
-        global $wp_filter;
+		$has_nopriv = isset( $wp_filter['wp_ajax_nopriv_geekbench_scraper_fetch'] );
+		$has_priv   = isset( $wp_filter['wp_ajax_geekbench_scraper_fetch'] );
 
-        $has_nopriv = isset($wp_filter['wp_ajax_nopriv_geekbench_scraper_fetch']);
-        $has_priv = isset($wp_filter['wp_ajax_geekbench_scraper_fetch']);
+		if ( $has_nopriv ) {
+			$checks[] = '✅ wp_ajax_nopriv_geekbench_scraper_fetch is registered (for non-logged-in users)';
+		} else {
+			$checks[]   = '❌ wp_ajax_nopriv_geekbench_scraper_fetch NOT registered';
+			$all_passed = false;
+		}
 
-        if ($has_nopriv) {
-            $checks[] = '✅ wp_ajax_nopriv_geekbench_scraper_fetch is registered (for non-logged-in users)';
-        } else {
-            $checks[] = '❌ wp_ajax_nopriv_geekbench_scraper_fetch NOT registered';
-            $all_passed = false;
-        }
+		if ( $has_priv ) {
+			$checks[] = '✅ wp_ajax_geekbench_scraper_fetch is registered (for logged-in users)';
+		} else {
+			$checks[]   = '❌ wp_ajax_geekbench_scraper_fetch NOT registered';
+			$all_passed = false;
+		}
 
-        if ($has_priv) {
-            $checks[] = '✅ wp_ajax_geekbench_scraper_fetch is registered (for logged-in users)';
-        } else {
-            $checks[] = '❌ wp_ajax_geekbench_scraper_fetch NOT registered';
-            $all_passed = false;
-        }
+		// Check 3: Verify handler callback is correct
+		if ( $has_priv && isset( $wp_filter['wp_ajax_geekbench_scraper_fetch']->callbacks ) ) {
+			$callbacks     = $wp_filter['wp_ajax_geekbench_scraper_fetch']->callbacks;
+			$handler_found = false;
 
-        // Check 3: Verify handler callback is correct
-        if ($has_priv && isset($wp_filter['wp_ajax_geekbench_scraper_fetch']->callbacks)) {
-            $callbacks = $wp_filter['wp_ajax_geekbench_scraper_fetch']->callbacks;
-            $handler_found = false;
+			foreach ( $callbacks as $priority => $functions ) {
+				foreach ( $functions as $function ) {
+					if ( isset( $function['function'] ) && is_array( $function['function'] ) ) {
+						$class  = get_class( $function['function'][0] );
+						$method = $function['function'][1];
 
-            foreach ($callbacks as $priority => $functions) {
-                foreach ($functions as $function) {
-                    if (isset($function['function']) && is_array($function['function'])) {
-                        $class = get_class($function['function'][0]);
-                        $method = $function['function'][1];
+						if ( $class === 'GeekbenchScraper\\Shortcode' && $method === 'ajax_fetch_results' ) {
+							$checks[]      = '✅ Handler callback is correct: Shortcode::ajax_fetch_results()';
+							$handler_found = true;
+							break 2;
+						}
+					}
+				}
+			}
 
-                        if ($class === 'GeekbenchScraper\\Shortcode' && $method === 'ajax_fetch_results') {
-                            $checks[] = '✅ Handler callback is correct: Shortcode::ajax_fetch_results()';
-                            $handler_found = true;
-                            break 2;
-                        }
-                    }
-                }
-            }
+			if ( ! $handler_found ) {
+				$checks[] = '⚠️ Handler callback could not be verified (but may still work)';
+			}
+		}
 
-            if (!$handler_found) {
-                $checks[] = '⚠️ Handler callback could not be verified (but may still work)';
-            }
-        }
+		// Check 4: Verify Admin class is NOT registering the same handler
+		// (This was the bug that caused the conflict)
+		$admin_conflict = false;
+		if ( $has_priv && isset( $wp_filter['wp_ajax_geekbench_scraper_fetch']->callbacks ) ) {
+			$callbacks = $wp_filter['wp_ajax_geekbench_scraper_fetch']->callbacks;
 
-        // Check 4: Verify Admin class is NOT registering the same handler
-        // (This was the bug that caused the conflict)
-        $admin_conflict = false;
-        if ($has_priv && isset($wp_filter['wp_ajax_geekbench_scraper_fetch']->callbacks)) {
-            $callbacks = $wp_filter['wp_ajax_geekbench_scraper_fetch']->callbacks;
+			foreach ( $callbacks as $priority => $functions ) {
+				foreach ( $functions as $function ) {
+					if ( isset( $function['function'] ) && is_array( $function['function'] ) ) {
+						$class = get_class( $function['function'][0] );
 
-            foreach ($callbacks as $priority => $functions) {
-                foreach ($functions as $function) {
-                    if (isset($function['function']) && is_array($function['function'])) {
-                        $class = get_class($function['function'][0]);
+						if ( $class === 'GeekbenchScraper\\Admin' ) {
+							$admin_conflict = true;
+							break 2;
+						}
+					}
+				}
+			}
+		}
 
-                        if ($class === 'GeekbenchScraper\\Admin') {
-                            $admin_conflict = true;
-                            break 2;
-                        }
-                    }
-                }
-            }
-        }
+		if ( $admin_conflict ) {
+			$checks[]   = '❌ CONFLICT: Admin class is also registering geekbench_scraper_fetch (this will break frontend search!)';
+			$all_passed = false;
+		} else {
+			$checks[] = '✅ No conflict: Admin class is NOT registering geekbench_scraper_fetch';
+		}
 
-        if ($admin_conflict) {
-            $checks[] = '❌ CONFLICT: Admin class is also registering geekbench_scraper_fetch (this will break frontend search!)';
-            $all_passed = false;
-        } else {
-            $checks[] = '✅ No conflict: Admin class is NOT registering geekbench_scraper_fetch';
-        }
+		// Check 5: Test actual AJAX request (simulate frontend call)
+		$test_query = 'iPhone18';
 
-        // Check 5: Test actual AJAX request (simulate frontend call)
-        $test_query = 'iPhone18';
+		// Simulate POST data
+		$_POST['action'] = 'geekbench_scraper_fetch';
+		$_POST['query']  = $test_query;
+		$_POST['limit']  = '5';
 
-        // Simulate POST data
-        $_POST['action'] = 'geekbench_scraper_fetch';
-        $_POST['query'] = $test_query;
-        $_POST['limit'] = '5';
+		// Capture output
+		ob_start();
 
-        // Capture output
-        ob_start();
+		try {
+			// Call the handler directly
+			$plugin    = \GeekbenchScraper\Plugin::get_instance();
+			$shortcode = $plugin->get_shortcode();
 
-        try {
-            // Call the handler directly
-            $plugin = \GeekbenchScraper\Plugin::get_instance();
-            $shortcode = $plugin->get_shortcode();
+			if ( $shortcode !== null ) {
+				// This would normally call wp_send_json_success/error
+				// We'll just verify the handler exists and is callable
+				if ( method_exists( $shortcode, 'ajax_fetch_results' ) ) {
+					$checks[] = '✅ ajax_fetch_results method exists and is callable';
+				} else {
+					$checks[]   = '❌ ajax_fetch_results method NOT found';
+					$all_passed = false;
+				}
+			} else {
+				$checks[]   = '❌ Shortcode instance not found in Plugin';
+				$all_passed = false;
+			}
+		} catch ( \Exception $e ) {
+			$checks[]   = '❌ Error testing AJAX handler: ' . $e->getMessage();
+			$all_passed = false;
+		}
 
-            if ($shortcode !== null) {
-                // This would normally call wp_send_json_success/error
-                // We'll just verify the handler exists and is callable
-                if (method_exists($shortcode, 'ajax_fetch_results')) {
-                    $checks[] = '✅ ajax_fetch_results method exists and is callable';
-                } else {
-                    $checks[] = '❌ ajax_fetch_results method NOT found';
-                    $all_passed = false;
-                }
-            } else {
-                $checks[] = '❌ Shortcode instance not found in Plugin';
-                $all_passed = false;
-            }
-        } catch (\Exception $e) {
-            $checks[] = '❌ Error testing AJAX handler: ' . $e->getMessage();
-            $all_passed = false;
-        }
+		ob_end_clean();
 
-        ob_end_clean();
+		// Clean up
+		unset( $_POST['action'] );
+		unset( $_POST['query'] );
+		unset( $_POST['limit'] );
 
-        // Clean up
-        unset($_POST['action']);
-        unset($_POST['query']);
-        unset($_POST['limit']);
-
-        if ($all_passed) {
-            wp_send_json_success([
-                'message' => 'Frontend AJAX handler is properly configured',
-                'details' => $checks,
-            ]);
-        } else {
-            wp_send_json_error([
-                'message' => 'Frontend AJAX handler has issues',
-                'details' => $checks,
-            ]);
-        }
-    }
+		if ( $all_passed ) {
+			wp_send_json_success(
+				[
+					'message' => 'Frontend AJAX handler is properly configured',
+					'details' => $checks,
+				]
+			);
+		} else {
+			wp_send_json_error(
+				[
+					'message' => 'Frontend AJAX handler has issues',
+					'details' => $checks,
+				]
+			);
+		}
+	}
 }
-
