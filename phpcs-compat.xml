@@ -18,8 +18,8 @@
     <!-- Only check PHP files -->
     <arg name="extensions" value="php"/>
 
-    <!-- Check for PHP 7.4+ compatibility -->
-    <config name="testVersion" value="7.4-"/>
+    <!-- Check for PHP 8.0+ compatibility -->
+    <config name="testVersion" value="8.0-"/>
     <rule ref="PHPCompatibilityWP"/>
 </ruleset>
 

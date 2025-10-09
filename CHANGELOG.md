@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.3.6] - 2025-10-08
+
+### Fixed
+- **GitHub Actions Not Running** (Oct 8, 2025):
+  - Fixed workflow trigger branch name from `develop` to `development`
+  - Workflow was not triggering because branch names didn't match
+  - Tests now run automatically on push/PR to `main` and `development` branches
+
+### Changed
+- **PHP Version Requirements** (Oct 8, 2025):
+  - Dropped support for PHP 7.4
+  - Minimum PHP version is now 8.0
+  - Updated `composer.json` to require PHP >= 8.0
+  - Updated plugin header to require PHP 8.0
+  - Updated GitHub Actions matrix to test only PHP 8.0, 8.1, 8.2, 8.3
+  - Updated PHP compatibility checks to test for PHP 8.0+ instead of 7.4+
+  - Updated `phpcs-compat.xml` to check PHP 8.0+ compatibility
+
+### Removed
+- **PHP 7.4 Support** (Oct 8, 2025):
+  - Removed PHP 7.4 from CI/CD test matrix
+  - Removed PHP 7.4 compatibility checks
+  - Plugin now requires modern PHP 8.0+ features
+
+---
+
 ## [1.3.5] - 2025-10-08
 
 ### Added
